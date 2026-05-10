@@ -7,6 +7,7 @@ import { merchCmd } from './merch.js';
 import { shipCmd as shipSub } from './ship.js';
 import { makeCliSetupContext } from '../setup-context.js';
 import { ensureInstalled, loadInstalledPackage } from '../installer.js';
+import { runShell } from './build.js';
 
 export const promoteCmd = new Command('promote')
   .description('Run ads + ship swag. Reddit, Meta, TikTok, Google, YouTube, X, Apple Search, LinkedIn, Microsoft — plus Printful/Printify merch.')
@@ -483,4 +484,24 @@ docsCmd
   .action((opts: { json?: boolean }) => {
     if (opts.json) { console.log(JSON.stringify({ docs: [] }, null, 2)); return; }
     console.log(kleur.dim('[stub] docs list'));
+  });
+
+// Publish to package registries. Promote because publishing IS
+// promotion — it's how a package gets users. Only works from inside
+// the sh1pt monorepo (wraps root-level pnpm publish:* scripts).
+const publishCmd = promoteCmd
+  .command('publish')
+  .description('Publish sh1pt build artifacts to a package registry');
+
+publishCmd
+  .command('npm')
+  .description('Publish sh1pt packages to npm (cli only by default; --all for core+policy+cli)')
+  .option('--all', 'publish core + policy + cli')
+  .option('--dry-run', 'package + verify without uploading')
+  .option('--otp <code>', 'one-time password for npm 2FA')
+  .action((opts: { all?: boolean; dryRun?: boolean; otp?: string }) => {
+    const script = opts.dryRun ? 'publish:dry' : opts.all ? 'publish:all' : 'publish:cli';
+    const env: Record<string, string> = {};
+    if (opts.otp) env.NPM_OTP = opts.otp;
+    process.exit(runShell(['pnpm', script], env));
   });
