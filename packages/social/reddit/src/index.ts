@@ -14,8 +14,8 @@ export default defineSocial<Config>({
   label: 'Reddit',
   requires: { maxBodyChars: 40_000, maxHashtags: 0 },   // Reddit doesn't use hashtags
   async connect(ctx) {
-    if (!ctx.secret('REDDIT_CLIENT_ID') || !ctx.secret('REDDIT_CLIENT_SECRET') || !ctx.secret('REDDIT_REFRESH_TOKEN')) {
-      throw new Error('Reddit needs CLIENT_ID + CLIENT_SECRET + REFRESH_TOKEN in vault');
+    if (!ctx.secret('REDDIT_ACCESS_TOKEN') && !ctx.secret('REDDIT_REFRESH_TOKEN')) {
+      throw new Error('Reddit needs REDDIT_ACCESS_TOKEN or REDDIT_REFRESH_TOKEN in vault');
     }
     return { accountId: 'reddit' };
   },
@@ -27,13 +27,30 @@ export default defineSocial<Config>({
   },
 
   setup: oauthSetup({
-    secretKey: "REDDIT_REFRESH_TOKEN",
-    label: "Reddit",
-    vendorDocUrl: "https://www.reddit.com/prefs/apps",
+    secretKey: 'REDDIT_ACCESS_TOKEN',
+    label: 'Reddit',
+    vendorDocUrl: 'https://www.reddit.com/prefs/apps',
     steps: [
-      "Open reddit.com/prefs/apps \u2192 create another app \u2192 script or web app",
-      "Complete OAuth dance to get a refresh token (scope: submit, read)",
-      "Paste the refresh token; sh1pt will exchange it for access tokens as needed",
+      'Open reddit.com/prefs/apps -> create another app -> installed app',
+      'Set redirect URI to http://127.0.0.1:8765/callback',
+      'Copy the client id (under the app name) - installed apps have no secret',
+      'sh1pt opens the OAuth flow; refresh tokens are saved automatically',
     ],
+    // Reddit installed-app PKCE. The token endpoint demands Basic auth
+    // even for installed apps (client_id with an empty password); the
+    // helper passes that through `tokenAuthHeader`.
+    ...(process.env.SH1PT_REDDIT_CLIENT_ID
+      ? {
+          loopback: {
+            clientId: process.env.SH1PT_REDDIT_CLIENT_ID,
+            authUrl: 'https://www.reddit.com/api/v1/authorize',
+            tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+            scopes: ['submit', 'read', 'identity', 'edit', 'flair'],
+            refreshSecretKey: 'REDDIT_REFRESH_TOKEN',
+            extraAuthParams: { duration: 'permanent' },
+            tokenAuthHeader: `Basic ${Buffer.from(`${process.env.SH1PT_REDDIT_CLIENT_ID}:`).toString('base64')}`,
+          },
+        }
+      : {}),
   }),
 });
