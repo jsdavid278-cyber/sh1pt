@@ -17,6 +17,7 @@ export * from './bridge.js';
 export * from './docs.js';
 export * from './jurisdiction.js';
 export * from './bot.js';
+export * from './service.js';
 export * from './secrets.js';
 export * from './observability.js';
 export * from './security.js';
