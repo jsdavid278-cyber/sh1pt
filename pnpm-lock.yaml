@@ -3900,6 +3900,9 @@ importers:
 
   sites/sh1pt.com:
     dependencies:
+      '@profullstack/autoblog':
+        specifier: github:profullstack/autoblog#b28d289
+        version: https://codeload.github.com/profullstack/autoblog/tar.gz/b28d289
       '@supabase/ssr':
         specifier: ^0.5.0
         version: 0.5.2(@supabase/supabase-js@2.103.3)
@@ -4553,6 +4556,11 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
+
+  '@profullstack/autoblog@https://codeload.github.com/profullstack/autoblog/tar.gz/b28d289':
+    resolution: {tarball: https://codeload.github.com/profullstack/autoblog/tar.gz/b28d289}
+    version: 0.1.0
+    engines: {node: '>=18'}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -6342,6 +6350,8 @@ snapshots:
     optional: true
 
   '@pinojs/redact@0.4.0': {}
+
+  '@profullstack/autoblog@https://codeload.github.com/profullstack/autoblog/tar.gz/b28d289': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 
