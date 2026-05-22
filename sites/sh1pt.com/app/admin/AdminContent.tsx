@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import GithubAppSection from './GithubAppSection';
+import type { GithubAppStatus } from '@/lib/github-app';
 
 type Integration = {
   id: string;
@@ -14,7 +15,7 @@ type Integration = {
   request_count: number;
 };
 
-export default function AdminContent() {
+export default function AdminContent({ ghStatus }: { ghStatus: GithubAppStatus }) {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -288,7 +289,7 @@ export default function AdminContent() {
         )}
       </section>
 
-      <GithubAppSection />
+      <GithubAppSection status={ghStatus} />
 
       <p style={{ marginTop: 24, fontSize: '0.85rem' }}>
         <Link href="/dashboard" className="muted">

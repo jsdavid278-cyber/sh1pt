@@ -1,8 +1,12 @@
 import 'server-only';
-import { createPrivateKey, createSign, randomUUID } from 'node:crypto';
-import { getSupabaseServiceClient } from './supabase/service';
+import { createPrivateKey, createSign } from 'node:crypto';
+import { env, isGithubAppConfigured } from './env';
 
-// sh1pt platform-level GitHub App helpers.
+export { isGithubAppConfigured } from './env';
+
+// sh1pt platform-level GitHub App helpers. Credentials live in Railway
+// env vars (set via the App Manifest flow at /admin/github/setup);
+// we never persist them to the DB.
 //
 // Two tokens are in play:
 //  - App JWT: signed with the App's private key (RS256), valid 10 minutes.
@@ -15,72 +19,26 @@ import { getSupabaseServiceClient } from './supabase/service';
 
 export const GITHUB_API_BASE = 'https://api.github.com';
 
-export interface GithubAppConfigRow {
-  id: string;
-  app_id: number | null;
-  app_slug: string | null;
-  client_id: string | null;
-  client_secret: string | null;
-  private_key_pem: string | null;
-  webhook_secret: string | null;
-  verified_at: string | null;
-  updated_at: string;
-}
-
-export interface GithubAppConfigSummary {
+export interface GithubAppStatus {
   configured: boolean;
-  app_id: number | null;
-  app_slug: string | null;
-  client_id: string | null;
-  private_key_pem_set: boolean;
-  webhook_secret_set: boolean;
+  app_id: string;
+  app_slug: string;
+  client_id_set: boolean;
   client_secret_set: boolean;
-  verified_at: string | null;
-  updated_at: string | null;
+  private_key_set: boolean;
+  webhook_secret_set: boolean;
 }
 
-export function summarizeConfig(row: GithubAppConfigRow | null): GithubAppConfigSummary {
-  if (!row) {
-    return {
-      configured: false,
-      app_id: null,
-      app_slug: null,
-      client_id: null,
-      private_key_pem_set: false,
-      webhook_secret_set: false,
-      client_secret_set: false,
-      verified_at: null,
-      updated_at: null,
-    };
-  }
-  const hasCore = Boolean(row.app_id && row.app_slug && row.private_key_pem);
+export function githubAppStatus(): GithubAppStatus {
   return {
-    configured: hasCore,
-    app_id: row.app_id,
-    app_slug: row.app_slug,
-    client_id: row.client_id,
-    private_key_pem_set: Boolean(row.private_key_pem),
-    webhook_secret_set: Boolean(row.webhook_secret),
-    client_secret_set: Boolean(row.client_secret),
-    verified_at: row.verified_at,
-    updated_at: row.updated_at,
+    configured: isGithubAppConfigured(),
+    app_id: env.githubAppId,
+    app_slug: env.githubAppSlug,
+    client_id_set: Boolean(env.githubAppClientId),
+    client_secret_set: Boolean(env.githubAppClientSecret),
+    private_key_set: Boolean(env.githubAppPrivateKey),
+    webhook_secret_set: Boolean(env.githubAppWebhookSecret),
   };
-}
-
-export async function loadGithubAppConfig(): Promise<GithubAppConfigRow | null> {
-  const supabase = getSupabaseServiceClient();
-  const { data, error } = await supabase
-    .from('github_app_config')
-    .select(
-      'id, app_id, app_slug, client_id, client_secret, private_key_pem, webhook_secret, verified_at, updated_at',
-    )
-    .limit(1)
-    .maybeSingle<GithubAppConfigRow>();
-  if (error) {
-    console.error('[github-app] config load failed', error);
-    return null;
-  }
-  return data;
 }
 
 // ---------- JWT (RS256) ----------
@@ -93,16 +51,24 @@ function base64url(input: Buffer | string): string {
 /**
  * Mint a short-lived GitHub App JWT (RS256). 10-minute max lifetime per
  * GitHub's spec; we set iat 30s in the past to absorb minor clock drift.
+ *
+ * Railway env vars sometimes arrive with literal "\n" sequences instead of
+ * real newlines (depends on how the admin pasted them) — normalize before
+ * signing.
  */
-export function mintAppJwt(appId: number, privateKeyPem: string): string {
+export function mintAppJwt(): string {
+  if (!env.githubAppId) throw new Error('GITHUB_APP_ID is not configured');
+  if (!env.githubAppPrivateKey) throw new Error('GITHUB_APP_PRIVATE_KEY is not configured');
+
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
-  const payload = { iat: now - 30, exp: now + 9 * 60, iss: appId };
+  const payload = { iat: now - 30, exp: now + 9 * 60, iss: env.githubAppId };
   const headerB64 = base64url(JSON.stringify(header));
   const payloadB64 = base64url(JSON.stringify(payload));
   const signingInput = `${headerB64}.${payloadB64}`;
 
-  const key = createPrivateKey({ key: privateKeyPem, format: 'pem' });
+  const pem = env.githubAppPrivateKey.replace(/\\n/g, '\n');
+  const key = createPrivateKey({ key: pem, format: 'pem' });
   const signer = createSign('RSA-SHA256');
   signer.update(signingInput);
   signer.end();
@@ -117,7 +83,6 @@ export interface GithubFetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   token: string;
-  tokenType: 'app-jwt' | 'installation';
 }
 
 export interface GithubFetchResult<T> {
@@ -181,55 +146,84 @@ export interface InstallationTokenResponse {
   permissions?: Record<string, string>;
 }
 
-/**
- * Exchange an app JWT for an installation access token. Tokens are
- * short-lived (~1h) — caller should mint a fresh one per request.
- */
 export async function mintInstallationToken(
-  appJwt: string,
   installationId: number,
 ): Promise<GithubFetchResult<InstallationTokenResponse>> {
+  const jwt = mintAppJwt();
   return githubFetch<InstallationTokenResponse>(
     `/app/installations/${installationId}/access_tokens`,
-    { method: 'POST', token: appJwt, tokenType: 'app-jwt' },
+    { method: 'POST', token: jwt },
   );
 }
 
-// ---------- High-level helpers ----------
+// ---------- Installation lookup ----------
 
-export interface VerifiedAppInfo {
+export interface AppInstallation {
+  id: number;
+  account: {
+    login: string;
+    id: number;
+    type: 'User' | 'Organization';
+    avatar_url?: string;
+  };
+  repository_selection: 'all' | 'selected';
+  permissions: Record<string, string>;
+}
+
+export async function getInstallation(
+  installationId: number,
+): Promise<GithubFetchResult<AppInstallation>> {
+  const jwt = mintAppJwt();
+  return githubFetch<AppInstallation>(`/app/installations/${installationId}`, { token: jwt });
+}
+
+// ---------- App Manifest conversion ----------
+
+export interface AppManifestConversionResponse {
   id: number;
   slug: string;
-  name: string;
-  owner: { login: string; type: string };
-  permissions?: Record<string, string>;
-  events?: string[];
+  client_id: string;
+  client_secret: string;
+  webhook_secret: string | null;
+  pem: string;
+  owner: { login: string };
+  html_url: string;
 }
 
-export async function verifyAppCredentials(
-  appId: number,
-  privateKeyPem: string,
-): Promise<GithubFetchResult<VerifiedAppInfo>> {
-  let jwt: string;
+/**
+ * Convert a one-shot manifest code into a freshly-provisioned GitHub App.
+ * GitHub gives us app_id + pem + client id/secret + webhook secret here,
+ * then the code is invalidated. Result goes in the URL fragment to keep
+ * it out of server logs.
+ * See https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest
+ */
+export async function convertAppManifest(
+  code: string,
+): Promise<GithubFetchResult<AppManifestConversionResponse>> {
+  const url = `${GITHUB_API_BASE}/app-manifests/${encodeURIComponent(code)}/conversions`;
+  let res: Response;
   try {
-    jwt = mintAppJwt(appId, privateKeyPem);
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'sh1pt-actions-fleet',
+      },
+    });
   } catch (err) {
-    return {
-      ok: false,
-      status: 0,
-      error: err instanceof Error ? `Invalid private key: ${err.message}` : 'Invalid private key',
-    };
+    return { ok: false, status: 0, error: err instanceof Error ? err.message : String(err) };
   }
-  return githubFetch<VerifiedAppInfo>('/app', { token: jwt, tokenType: 'app-jwt' });
+  const text = await res.text();
+  let parsed: unknown;
+  try {
+    parsed = text ? JSON.parse(text) : undefined;
+  } catch {
+    parsed = text;
+  }
+  if (!res.ok) {
+    const message = isObject(parsed) && typeof parsed.message === 'string' ? parsed.message : res.statusText;
+    return { ok: false, status: res.status, error: message };
+  }
+  return { ok: true, status: res.status, data: parsed as AppManifestConversionResponse };
 }
-
-// ---------- CSRF state cookie (install flow) ----------
-
-const INSTALL_STATE_COOKIE = 'sh1pt_gh_install_state';
-const INSTALL_STATE_MAX_AGE = 60 * 10; // 10 minutes
-
-export function newInstallState(): string {
-  return randomUUID();
-}
-
-export { INSTALL_STATE_COOKIE, INSTALL_STATE_MAX_AGE };

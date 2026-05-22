@@ -4,10 +4,8 @@ import { getSupabaseServerClient } from './supabase/server';
 import { getSupabaseServiceClient } from './supabase/service';
 import {
   githubFetch,
-  loadGithubAppConfig,
-  mintAppJwt,
   mintInstallationToken,
-  type GithubAppConfigRow,
+  isGithubAppConfigured,
 } from './github-app';
 
 export interface InstallationRow {
@@ -42,7 +40,7 @@ interface InstallationsListResult {
  */
 export async function authorizeInstallation(
   installationPk: string,
-): Promise<{ profile_id: string; installation: InstallationRow; config: GithubAppConfigRow } | NextResponse> {
+): Promise<{ profile_id: string; installation: InstallationRow } | NextResponse> {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -69,12 +67,11 @@ export async function authorizeInstallation(
     return NextResponse.json({ error: 'Installation not found' }, { status: 404 });
   }
 
-  const config = await loadGithubAppConfig();
-  if (!config || !config.app_id || !config.private_key_pem) {
+  if (!isGithubAppConfigured()) {
     return NextResponse.json({ error: 'GitHub App not configured' }, { status: 500 });
   }
 
-  return { profile_id: profile.id, installation, config };
+  return { profile_id: profile.id, installation };
 }
 
 /**
@@ -83,23 +80,12 @@ export async function authorizeInstallation(
  */
 export async function listInstallationRepos(
   installation: InstallationRow,
-  config: GithubAppConfigRow,
 ): Promise<{ ok: true; repos: GithubRepoResult[] } | { ok: false; error: string; status: number }> {
-  if (!config.app_id || !config.private_key_pem) {
+  if (!isGithubAppConfigured()) {
     return { ok: false, status: 500, error: 'GitHub App credentials missing' };
   }
-  let appJwt: string;
-  try {
-    appJwt = mintAppJwt(config.app_id, config.private_key_pem);
-  } catch (err) {
-    return {
-      ok: false,
-      status: 500,
-      error: err instanceof Error ? err.message : 'Invalid private key',
-    };
-  }
 
-  const tokenResp = await mintInstallationToken(appJwt, installation.installation_id);
+  const tokenResp = await mintInstallationToken(installation.installation_id);
   if (!tokenResp.ok || !tokenResp.data) {
     return { ok: false, status: tokenResp.status || 500, error: tokenResp.error ?? 'Token mint failed' };
   }
@@ -108,12 +94,10 @@ export async function listInstallationRepos(
   const all: GithubRepoResult[] = [];
   let page = 1;
   const perPage = 100;
-  // Cap pagination at 10 pages (1000 repos) — anything more is an org that
-  // needs the search/scoped endpoint, future work.
-  while (page <= 10) {
+  while (page <= 50) {
     const result = await githubFetch<InstallationsListResult>(
       `/installation/repositories?per_page=${perPage}&page=${page}`,
-      { token: installationToken, tokenType: 'installation' },
+      { token: installationToken },
     );
     if (!result.ok || !result.data) {
       return { ok: false, status: result.status || 500, error: result.error ?? 'Repo list failed' };

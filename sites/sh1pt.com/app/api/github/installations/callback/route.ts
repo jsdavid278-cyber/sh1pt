@@ -1,66 +1,69 @@
+// GitHub App install callback. GitHub redirects users here after they
+// install the App on their account / org. We look up the installation
+// via the App JWT, persist the row tied to the signed-in user's profile,
+// then bounce back to the dashboard.
+//
+// Query params from GitHub:
+//   installation_id: number   — required, identifies the install
+//   setup_action:    string   — 'install' | 'update' | 'request'
+
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/service';
-import {
-  INSTALL_STATE_COOKIE,
-  githubFetch,
-  loadGithubAppConfig,
-  mintAppJwt,
-} from '@/lib/github-app';
+import { getInstallation, isGithubAppConfigured } from '@/lib/github-app';
+import { env } from '@/lib/env';
 
-interface GithubInstallation {
-  id: number;
-  account: { login: string; type: 'User' | 'Organization'; avatar_url?: string };
-  repository_selection: 'all' | 'selected';
-  permissions: Record<string, string>;
+export const runtime = 'nodejs';
+
+async function publicBase(): Promise<string> {
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  if (host && !host.startsWith('0.0.0.0') && !host.startsWith('127.0.0.1')) {
+    return `${proto}://${host}`.replace(/\/$/, '');
+  }
+  return env.siteUrl.replace(/\/$/, '');
 }
 
 export async function GET(req: NextRequest) {
+  const base = await publicBase();
+  const url = req.nextUrl;
+  const installationIdRaw = url.searchParams.get('installation_id');
+  const setupAction = url.searchParams.get('setup_action');
+
+  // User must be signed in to bind this installation to their account.
+  // Park them at login with this callback as the redirect so they come
+  // back to the same query string after auth.
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    const next = encodeURIComponent('/dashboard/connect/github');
-    return NextResponse.redirect(new URL(`/login?next=${next}`, req.url));
+    const next = `/api/github/installations/callback?${url.searchParams.toString()}`;
+    return NextResponse.redirect(`${base}/login?next=${encodeURIComponent(next)}`);
   }
 
-  const params = req.nextUrl.searchParams;
-  const installationIdRaw = params.get('installation_id');
-  const setupAction = params.get('setup_action');
-  const returnedState = params.get('state');
-
   if (!installationIdRaw || !/^\d+$/.test(installationIdRaw)) {
-    return NextResponse.redirect(new URL('/dashboard/github?error=missing_installation', req.url));
+    return NextResponse.redirect(`${base}/dashboard/github?error=missing_installation`);
   }
   const installationId = Number.parseInt(installationIdRaw, 10);
 
-  // CSRF: the state cookie was set when we redirected to GitHub. It must
-  // match what GitHub echoes back. Missing cookie = treat as untrusted.
-  const cookieStore = await cookies();
-  const expectedState = cookieStore.get(INSTALL_STATE_COOKIE)?.value;
-  cookieStore.delete(INSTALL_STATE_COOKIE);
-  if (!expectedState || !returnedState || expectedState !== returnedState) {
-    return NextResponse.redirect(new URL('/dashboard/github?error=bad_state', req.url));
+  // "request" means the user asked for install access on a repo they
+  // don't own — there's nothing for us to persist yet.
+  if (setupAction === 'request') {
+    return NextResponse.redirect(`${base}/dashboard/github?notice=install_requested`);
   }
 
-  const config = await loadGithubAppConfig();
-  if (!config || !config.app_id || !config.private_key_pem) {
-    return NextResponse.redirect(new URL('/dashboard/github?error=app_not_configured', req.url));
+  if (!isGithubAppConfigured()) {
+    return NextResponse.redirect(`${base}/dashboard/github?error=app_not_configured`);
   }
 
-  // Look up the installation details so we can record account_login etc.
-  const jwt = mintAppJwt(config.app_id, config.private_key_pem);
-  const lookup = await githubFetch<GithubInstallation>(`/app/installations/${installationId}`, {
-    token: jwt,
-    tokenType: 'app-jwt',
-  });
+  const lookup = await getInstallation(installationId);
   if (!lookup.ok || !lookup.data) {
     console.error('[gh-callback] installation lookup failed', lookup);
-    return NextResponse.redirect(new URL('/dashboard/github?error=lookup_failed', req.url));
+    return NextResponse.redirect(`${base}/dashboard/github?error=lookup_failed`);
   }
-
   const inst = lookup.data;
 
   const admin = getSupabaseServiceClient();
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
     .eq('user_id', user.id)
     .maybeSingle<{ id: string }>();
   if (!profile) {
-    return NextResponse.redirect(new URL('/dashboard?error=no_profile', req.url));
+    return NextResponse.redirect(`${base}/dashboard?error=no_profile`);
   }
 
   const now = new Date().toISOString();
@@ -85,15 +88,15 @@ export async function GET(req: NextRequest) {
         account_avatar_url: inst.account.avatar_url ?? null,
         repository_selection: inst.repository_selection,
         permissions: inst.permissions,
-        status: setupAction === 'install' || setupAction === 'update' ? 'active' : 'active',
+        status: 'active',
         updated_at: now,
       },
       { onConflict: 'profile_id,installation_id' },
     );
   if (upsertErr) {
     console.error('[gh-callback] upsert failed', upsertErr);
-    return NextResponse.redirect(new URL('/dashboard/github?error=persist_failed', req.url));
+    return NextResponse.redirect(`${base}/dashboard/github?error=persist_failed`);
   }
 
-  return NextResponse.redirect(new URL('/dashboard/github?installed=1', req.url));
+  return NextResponse.redirect(`${base}/dashboard/github?installed=1`);
 }

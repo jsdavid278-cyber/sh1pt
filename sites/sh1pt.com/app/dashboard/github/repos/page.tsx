@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseServiceClient } from '@/lib/supabase/service';
-import { loadGithubAppConfig } from '@/lib/github-app';
+import { isGithubAppConfigured } from '@/lib/github-app';
 import { listInstallationRepos, type InstallationRow } from '@/lib/github-installation';
 import RepoPicker from './RepoPicker';
 
@@ -46,10 +46,9 @@ export default async function PickReposPage({
     .maybeSingle<InstallationRow>();
   if (!installation) redirect('/dashboard/github?error=missing_installation');
 
-  const config = await loadGithubAppConfig();
-  if (!config) redirect('/dashboard/github?error=app_not_configured');
+  if (!isGithubAppConfigured()) redirect('/dashboard/github?error=app_not_configured');
 
-  const reposResult = await listInstallationRepos(installation, config);
+  const reposResult = await listInstallationRepos(installation);
   if (!reposResult.ok) {
     return (
       <main className="container" style={{ paddingTop: 80, paddingBottom: 80, maxWidth: 760 }}>

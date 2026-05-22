@@ -1,50 +1,18 @@
--- sh1pt Actions Fleet: GitHub App credentials + per-user installations.
+-- sh1pt Actions Fleet: per-user GitHub App installations + selected repos.
 --
--- Two layers:
---  1) github_app_config — a singleton row holding the sh1pt-platform-level
---     GitHub App credentials (admin-managed at /admin). Private key, webhook
---     secret, client secret are sensitive; access controlled via service role.
---  2) github_installations — per-user records of GitHub App installations on
+-- Platform-level App credentials (app_id, private key, client id/secret,
+-- webhook secret) live in Railway env vars, NOT in the DB. They're set
+-- via the App Manifest flow at /admin/github/setup — see
+-- sites/sh1pt.com/lib/github-app.ts for the manifest conversion.
+--
+--  1) github_installations — per-user records of GitHub App installations on
 --     orgs/users. Created when a user lands on the post-install callback.
---  3) github_installation_repos — repos selected by the user inside an
---     installation. (Selection is independent of the installation's GitHub
---     repository_selection setting; this lets users opt-in repo-by-repo.)
+--  2) github_installation_repos — repos selected by the user inside an
+--     installation. Selection is independent of the installation's GitHub
+--     repository_selection setting; this lets users opt-in repo-by-repo.
 
 -- ============================================================
--- 1. github_app_config: singleton platform-level GitHub App config
--- ============================================================
-create table if not exists public.github_app_config (
-  -- Singleton enforced via the unique index below; keep id as a real PK
-  -- so we can update without ON CONFLICT gymnastics.
-  id uuid default gen_random_uuid() primary key,
-  app_id bigint,
-  app_slug text,
-  client_id text,
-  client_secret text,
-  private_key_pem text,
-  webhook_secret text,
-  verified_at timestamptz,
-  updated_by uuid references public.profiles(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- Enforce singleton: at most one row in the table.
-create unique index if not exists idx_github_app_config_singleton
-  on public.github_app_config ((true));
-
-alter table public.github_app_config enable row level security;
-
-drop policy if exists "Service role full access on github_app_config"
-  on public.github_app_config;
-create policy "Service role full access on github_app_config"
-  on public.github_app_config
-  for all
-  using (auth.role() = 'service_role')
-  with check (auth.role() = 'service_role');
-
--- ============================================================
--- 2. github_installations: per-user installation records
+-- 1. github_installations: per-user installation records
 -- ============================================================
 create table if not exists public.github_installations (
   id uuid default gen_random_uuid() primary key,
@@ -80,7 +48,7 @@ create policy "Service role full access on github_installations"
   with check (auth.role() = 'service_role');
 
 -- ============================================================
--- 3. github_installation_repos: per-user repo picks
+-- 2. github_installation_repos: per-user repo picks
 -- ============================================================
 create table if not exists public.github_installation_repos (
   id uuid default gen_random_uuid() primary key,

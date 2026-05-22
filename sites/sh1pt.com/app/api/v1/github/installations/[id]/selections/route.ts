@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
   // Validate that every chosen id is actually visible to this installation —
   // prevents a malicious client from inserting arbitrary repo records.
-  const repos = await listInstallationRepos(auth.installation, auth.config);
+  const repos = await listInstallationRepos(auth.installation);
   if (!repos.ok) {
     return NextResponse.json({ error: repos.error }, { status: repos.status });
   }

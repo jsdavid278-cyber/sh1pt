@@ -10,7 +10,7 @@ export async function GET(
   const auth = await authorizeInstallation(id);
   if (auth instanceof NextResponse) return auth;
 
-  const repos = await listInstallationRepos(auth.installation, auth.config);
+  const repos = await listInstallationRepos(auth.installation);
   if (!repos.ok) {
     return NextResponse.json({ error: repos.error }, { status: repos.status });
   }

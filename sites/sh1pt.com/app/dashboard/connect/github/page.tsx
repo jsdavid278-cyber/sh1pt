@@ -1,13 +1,7 @@
-import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import {
-  INSTALL_STATE_COOKIE,
-  INSTALL_STATE_MAX_AGE,
-  loadGithubAppConfig,
-  newInstallState,
-} from '@/lib/github-app';
+import { env, isGithubAppConfigured } from '@/lib/env';
 
 export const metadata = {
   title: 'Connect GitHub — sh1pt',
@@ -23,27 +17,10 @@ export default async function ConnectGithubPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login?next=/dashboard/connect/github');
 
-  const config = await loadGithubAppConfig();
-  const slug = config?.app_slug;
-
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? 'https';
-  const origin = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_SITE_URL ?? 'https://sh1pt.com';
-
-  // Set a short-lived CSRF state cookie that the callback validates.
-  const state = newInstallState();
-  const cookieStore = await cookies();
-  cookieStore.set(INSTALL_STATE_COOKIE, state, {
-    httpOnly: true,
-    secure: origin.startsWith('https://'),
-    sameSite: 'lax',
-    path: '/',
-    maxAge: INSTALL_STATE_MAX_AGE,
-  });
-
-  const installUrl = slug
-    ? `https://github.com/apps/${encodeURIComponent(slug)}/installations/new?state=${encodeURIComponent(state)}`
+  const configured = isGithubAppConfigured();
+  const slug = env.githubAppSlug;
+  const installUrl = configured && slug
+    ? `https://github.com/apps/${encodeURIComponent(slug)}/installations/new`
     : null;
 
   return (
@@ -54,7 +31,7 @@ export default async function ConnectGithubPage() {
         manage on the next screen.
       </p>
 
-      {!slug ? (
+      {!installUrl ? (
         <div
           style={{
             marginTop: 24,
@@ -65,7 +42,7 @@ export default async function ConnectGithubPage() {
             fontSize: '0.9rem',
           }}
         >
-          The sh1pt GitHub App is not configured yet. Ask an admin to set it up at{' '}
+          The sh1pt GitHub App is not configured yet. Ask an admin to register it at{' '}
           <Link href="/admin">/admin</Link>.
         </div>
       ) : (
@@ -82,7 +59,7 @@ export default async function ConnectGithubPage() {
             GitHub will ask which org and which repositories to grant access to. You can change
             this later in <code>github.com/settings/installations</code>.
           </p>
-          <a className="btn" href={installUrl!} style={{ display: 'inline-block', marginTop: 12 }}>
+          <a className="btn" href={installUrl} style={{ display: 'inline-block', marginTop: 12 }}>
             Install sh1pt on GitHub →
           </a>
         </section>
