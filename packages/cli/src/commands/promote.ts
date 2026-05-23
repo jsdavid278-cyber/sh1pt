@@ -618,7 +618,7 @@ socialCmd
       console.log(kleur.cyan('dry-run: social post preview\n'));
       for (const name of names) {
         const pkg = `@profullstack/sh1pt-social-${name}`;
-        let adapter: SocialPlatform<unknown> | null = null;
+        let adapter: SocialPlatform<unknown> | undefined;
         try {
           adapter = await loadInstalledPackage<SocialPlatform<unknown>>(pkg);
         } catch {
@@ -642,7 +642,7 @@ socialCmd
     let anyPosted = false;
     for (const name of names) {
       const pkg = `@profullstack/sh1pt-social-${name}`;
-      let adapter: SocialPlatform<unknown> | null = null;
+      let adapter: SocialPlatform<unknown> | undefined;
       try {
         adapter = await loadInstalledPackage<SocialPlatform<unknown>>(pkg);
       } catch {
