@@ -1,0 +1,35 @@
+# Marimo
+
+Reactive Python notebook.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-marimo`
+- Path: `services/marimo`
+- Adapter ID: `service-marimo`
+- Category: `ide`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-marimo
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-marimo typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/marimo/src/index.test.ts
+```

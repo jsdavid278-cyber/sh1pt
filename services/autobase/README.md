@@ -1,0 +1,35 @@
+# Autobase
+
+Self-hosted PostgreSQL database alternative.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-autobase`
+- Path: `services/autobase`
+- Adapter ID: `service-autobase`
+- Category: `db`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-autobase
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-autobase typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/autobase/src/index.test.ts
+```

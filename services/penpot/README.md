@@ -1,0 +1,35 @@
+# Penpot
+
+Open-source design platform.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-penpot`
+- Path: `services/penpot`
+- Adapter ID: `service-penpot`
+- Category: `design`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-penpot
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-penpot typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/penpot/src/index.test.ts
+```

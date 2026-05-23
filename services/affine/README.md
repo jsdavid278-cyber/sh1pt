@@ -1,0 +1,35 @@
+# Affine
+
+Notion/Miro alternative for knowledge management.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-affine`
+- Path: `services/affine`
+- Adapter ID: `service-affine`
+- Category: `productivity`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-affine
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-affine typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/affine/src/index.test.ts
+```

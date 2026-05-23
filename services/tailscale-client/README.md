@@ -1,0 +1,35 @@
+# Tailscale Client
+
+WireGuard VPN service.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-tailscale-client`
+- Path: `services/tailscale-client`
+- Adapter ID: `service-tailscale-client`
+- Category: `network`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-tailscale-client
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-tailscale-client typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/tailscale-client/src/index.test.ts
+```

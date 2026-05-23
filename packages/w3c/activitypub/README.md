@@ -1,0 +1,34 @@
+# ActivityPub
+
+sh1pt module for ActivityPub.
+
+## Package
+
+- Name: `@profullstack/sh1pt-w3c-activitypub`
+- Path: `packages/w3c/activitypub`
+- Adapter ID: `w3c-activitypub`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-w3c-activitypub
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-w3c-activitypub typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/w3c/activitypub/src/index.test.ts
+```

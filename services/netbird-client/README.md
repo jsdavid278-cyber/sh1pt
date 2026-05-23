@@ -1,0 +1,35 @@
+# Netbird Client
+
+WireGuard overlay network client.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-netbird-client`
+- Path: `services/netbird-client`
+- Adapter ID: `service-netbird-client`
+- Category: `network`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-netbird-client
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-netbird-client typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/netbird-client/src/index.test.ts
+```

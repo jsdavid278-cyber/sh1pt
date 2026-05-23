@@ -1,0 +1,34 @@
+# Cohere
+
+sh1pt module for Cohere.
+
+## Package
+
+- Name: `@profullstack/sh1pt-ai-cohere`
+- Path: `packages/ai/cohere`
+- Adapter ID: `ai-cohere`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-ai-cohere
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-ai-cohere typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/ai/cohere/src/index.test.ts
+```

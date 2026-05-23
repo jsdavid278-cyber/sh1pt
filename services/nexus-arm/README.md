@@ -1,0 +1,35 @@
+# Nexus Arm
+
+Universal repository manager (ARM).
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-nexus-arm`
+- Path: `services/nexus-arm`
+- Adapter ID: `service-nexus-arm`
+- Category: `registry`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-nexus-arm
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-nexus-arm typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/nexus-arm/src/index.test.ts
+```

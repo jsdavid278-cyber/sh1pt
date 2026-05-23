@@ -1,0 +1,34 @@
+# Supabase (Postgres / Auth / Storage / Edge Functions)
+
+sh1pt module for Supabase (Postgres / Auth / Storage / Edge Functions).
+
+## Package
+
+- Name: `@profullstack/sh1pt-cloud-supabase`
+- Path: `packages/cloud/supabase`
+- Adapter ID: `cloud-supabase`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-cloud-supabase
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-cloud-supabase typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/cloud/supabase/src/index.test.ts
+```

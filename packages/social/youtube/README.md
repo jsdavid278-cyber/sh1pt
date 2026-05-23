@@ -1,0 +1,34 @@
+# YouTube
+
+sh1pt module for YouTube.
+
+## Package
+
+- Name: `@profullstack/sh1pt-social-youtube`
+- Path: `packages/social/youtube`
+- Adapter ID: `social-youtube`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-social-youtube
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-social-youtube typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/social/youtube/src/index.test.ts
+```

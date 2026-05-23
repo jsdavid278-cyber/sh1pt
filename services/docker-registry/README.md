@@ -1,0 +1,35 @@
+# Docker Registry
+
+Docker image distribution.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-docker-registry`
+- Path: `services/docker-registry`
+- Adapter ID: `service-docker-registry`
+- Category: `registry`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-docker-registry
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-docker-registry typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/docker-registry/src/index.test.ts
+```

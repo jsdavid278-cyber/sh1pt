@@ -1,0 +1,35 @@
+# Anythingllm
+
+AI application supporting RAG and agents.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-anythingllm`
+- Path: `services/anythingllm`
+- Adapter ID: `service-anythingllm`
+- Category: `ai`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-anythingllm
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-anythingllm typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/anythingllm/src/index.test.ts
+```

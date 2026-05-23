@@ -1,0 +1,35 @@
+# Rallly
+
+Scheduling and collaboration tool.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-rallly`
+- Path: `services/rallly`
+- Adapter ID: `service-rallly`
+- Category: `scheduling`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-rallly
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-rallly typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/rallly/src/index.test.ts
+```

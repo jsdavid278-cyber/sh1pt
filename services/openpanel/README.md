@@ -1,0 +1,35 @@
+# Openpanel
+
+Product analytics alternative.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-openpanel`
+- Path: `services/openpanel`
+- Adapter ID: `service-openpanel`
+- Category: `analytics`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-openpanel
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-openpanel typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/openpanel/src/index.test.ts
+```

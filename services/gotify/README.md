@@ -1,0 +1,35 @@
+# Gotify
+
+Self-hosted notification server.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-gotify`
+- Path: `services/gotify`
+- Adapter ID: `service-gotify`
+- Category: `notifications`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-gotify
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-gotify typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/gotify/src/index.test.ts
+```

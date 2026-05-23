@@ -1,0 +1,34 @@
+# Fireworks AI
+
+sh1pt module for Fireworks AI.
+
+## Package
+
+- Name: `@profullstack/sh1pt-ai-fireworks`
+- Path: `packages/ai/fireworks`
+- Adapter ID: `ai-fireworks`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-ai-fireworks
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-ai-fireworks typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/ai/fireworks/src/index.test.ts
+```

@@ -1,0 +1,35 @@
+# Cloudflared
+
+Cloudflare Tunnel client.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-cloudflared`
+- Path: `services/cloudflared`
+- Adapter ID: `service-cloudflared`
+- Category: `network`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-cloudflared
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-cloudflared typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/cloudflared/src/index.test.ts
+```

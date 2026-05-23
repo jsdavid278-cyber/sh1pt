@@ -1,0 +1,35 @@
+# Convertx
+
+Self-hosted file converter.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-convertx`
+- Path: `services/convertx`
+- Adapter ID: `service-convertx`
+- Category: `tools`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-convertx
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-convertx typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/convertx/src/index.test.ts
+```

@@ -1,0 +1,35 @@
+# It Tools
+
+IT task management solution.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-it-tools`
+- Path: `services/it-tools`
+- Adapter ID: `service-it-tools`
+- Category: `tools`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-it-tools
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-it-tools typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/it-tools/src/index.test.ts
+```

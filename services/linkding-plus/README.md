@@ -1,0 +1,35 @@
+# Linkding Plus
+
+Bookmark manager with HTML archiving.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-linkding-plus`
+- Path: `services/linkding-plus`
+- Adapter ID: `service-linkding-plus`
+- Category: `productivity`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-linkding-plus
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-linkding-plus typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/linkding-plus/src/index.test.ts
+```

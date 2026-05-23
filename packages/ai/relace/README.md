@@ -1,0 +1,34 @@
+# Relace
+
+sh1pt module for Relace.
+
+## Package
+
+- Name: `@profullstack/sh1pt-ai-relace`
+- Path: `packages/ai/relace`
+- Adapter ID: `ai-relace`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-ai-relace
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-ai-relace typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/ai/relace/src/index.test.ts
+```

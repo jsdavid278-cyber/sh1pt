@@ -1,0 +1,34 @@
+# Wyoming DAO LLC (Experimental)
+
+Due 1st day of anniversary month; minimum $60.
+
+## Package
+
+- Name: `@profullstack/sh1pt-entity-dao-wy`
+- Path: `packages/entity/dao-wy`
+- Adapter ID: `entity-dao-wy`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-entity-dao-wy
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-entity-dao-wy typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/entity/dao-wy/src/index.test.ts
+```

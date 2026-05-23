@@ -1,0 +1,34 @@
+# SambaNova
+
+sh1pt module for SambaNova.
+
+## Package
+
+- Name: `@profullstack/sh1pt-ai-sambanova`
+- Path: `packages/ai/sambanova`
+- Adapter ID: `ai-sambanova`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-ai-sambanova
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-ai-sambanova typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/ai/sambanova/src/index.test.ts
+```

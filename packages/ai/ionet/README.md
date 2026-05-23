@@ -1,0 +1,34 @@
+# io.net
+
+sh1pt module for io.net.
+
+## Package
+
+- Name: `@profullstack/sh1pt-ai-ionet`
+- Path: `packages/ai/ionet`
+- Adapter ID: `ai-ionet`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-ai-ionet
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-ai-ionet typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/ai/ionet/src/index.test.ts
+```

@@ -1,0 +1,34 @@
+# 2Captcha
+
+sh1pt module for 2Captcha.
+
+## Package
+
+- Name: `@profullstack/sh1pt-captcha-2captcha`
+- Path: `packages/captcha/2captcha`
+- Adapter ID: `captcha-2captcha`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-captcha-2captcha
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-captcha-2captcha typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/captcha/2captcha/src/index.test.ts
+```

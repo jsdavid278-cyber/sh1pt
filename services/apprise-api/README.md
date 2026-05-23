@@ -1,0 +1,35 @@
+# Apprise Api
+
+Push notifications API.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-apprise-api`
+- Path: `services/apprise-api`
+- Adapter ID: `service-apprise-api`
+- Category: `notifications`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-apprise-api
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-apprise-api typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/apprise-api/src/index.test.ts
+```

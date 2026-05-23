@@ -1,0 +1,34 @@
+# Nebius Token Factory
+
+sh1pt module for Nebius Token Factory.
+
+## Package
+
+- Name: `@profullstack/sh1pt-ai-nebius`
+- Path: `packages/ai/nebius`
+- Adapter ID: `ai-nebius`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-ai-nebius
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-ai-nebius typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/ai/nebius/src/index.test.ts
+```

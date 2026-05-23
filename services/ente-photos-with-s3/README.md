@@ -1,0 +1,35 @@
+# Ente Photos With S3
+
+Photo storage with S3 backend.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-ente-photos-with-s3`
+- Path: `services/ente-photos-with-s3`
+- Adapter ID: `service-ente-photos-with-s3`
+- Category: `media`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-ente-photos-with-s3
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-ente-photos-with-s3 typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/ente-photos-with-s3/src/index.test.ts
+```

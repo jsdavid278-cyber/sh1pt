@@ -1,0 +1,34 @@
+# Meta Ads (Facebook / Instagram)
+
+Admin steps run against a real FB login; this account becomes the initial BM admin.
+
+## Package
+
+- Name: `@profullstack/sh1pt-promo-meta`
+- Path: `packages/promo/meta`
+- Adapter ID: `promo-meta`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-promo-meta
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-promo-meta typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run packages/promo/meta/src/index.test.ts
+```

@@ -1,0 +1,35 @@
+# Litellm
+
+LLM API gateway supporting 100+ models.
+
+## Package
+
+- Name: `@profullstack/sh1pt-service-litellm`
+- Path: `services/litellm`
+- Adapter ID: `service-litellm`
+- Category: `ai`
+- Homepage: https://sh1pt.com
+
+## Scripts
+
+- `build`: `tsc -p tsconfig.json`
+- `prepublishOnly`: `pnpm build`
+- `typecheck`: `tsc -p tsconfig.json --noEmit`
+
+## Usage
+
+```bash
+pnpm add @profullstack/sh1pt-service-litellm
+```
+
+## Development
+
+```bash
+pnpm --filter @profullstack/sh1pt-service-litellm typecheck
+```
+
+Run tests from the repository root when this module includes a test file:
+
+```bash
+pnpm vitest run services/litellm/src/index.test.ts
+```
