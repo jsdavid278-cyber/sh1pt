@@ -22,6 +22,14 @@ interface Installation {
   updated_at: string;
 }
 
+interface SelectedRepo {
+  installation_pk: string;
+  github_repo_id: number;
+  full_name: string;
+  private: boolean;
+  archived: boolean;
+}
+
 const ERROR_MESSAGES: Record<string, string> = {
   missing_installation: 'GitHub did not return an installation_id. Try again.',
   bad_state: 'CSRF check failed. Start the install flow from the Connect button.',
@@ -59,6 +67,21 @@ export default async function GithubInstallationsPage({
     .order('updated_at', { ascending: false });
 
   const installations = (rows ?? []) as Installation[];
+  const installationIds = installations.map((inst) => inst.id);
+  const { data: selectedRepoRows } = installationIds.length
+    ? await admin
+        .from('github_installation_repos')
+        .select('installation_pk, github_repo_id, full_name, private, archived')
+        .in('installation_pk', installationIds)
+        .order('full_name', { ascending: true })
+    : { data: [] };
+
+  const selectedReposByInstallation = new Map<string, SelectedRepo[]>();
+  for (const repo of (selectedRepoRows ?? []) as SelectedRepo[]) {
+    const repos = selectedReposByInstallation.get(repo.installation_pk) ?? [];
+    repos.push(repo);
+    selectedReposByInstallation.set(repo.installation_pk, repos);
+  }
 
   const params = await searchParams;
   const installed = params.installed === '1';
@@ -124,11 +147,11 @@ export default async function GithubInstallationsPage({
                 background: 'rgba(0,0,0,0.2)',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 gap: 12,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
                 {inst.account_avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -150,6 +173,55 @@ export default async function GithubInstallationsPage({
                   <div className="muted" style={{ fontSize: '0.75rem', marginTop: 2 }}>
                     Installation #{inst.installation_id} · status {inst.status}
                   </div>
+                  {(() => {
+                    const selectedRepos = selectedReposByInstallation.get(inst.id) ?? [];
+                    return selectedRepos.length > 0 ? (
+                      <div style={{ marginTop: 12 }}>
+                        <div className="muted" style={{ fontSize: '0.75rem', marginBottom: 6 }}>
+                          {selectedRepos.length} selected repo{selectedRepos.length === 1 ? '' : 's'}
+                        </div>
+                        <ul
+                          style={{
+                            listStyle: 'none',
+                            padding: 0,
+                            margin: 0,
+                            display: 'flex',
+                            gap: 6,
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          {selectedRepos.map((repo) => (
+                            <li
+                              key={repo.github_repo_id}
+                              style={{
+                                padding: '4px 7px',
+                                border: '1px solid var(--border, rgba(255,255,255,0.08))',
+                                borderRadius: 6,
+                                background: 'rgba(255,255,255,0.03)',
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              <code>{repo.full_name}</code>
+                              {repo.private ? (
+                                <span className="muted" style={{ marginLeft: 6 }}>
+                                  private
+                                </span>
+                              ) : null}
+                              {repo.archived ? (
+                                <span className="muted" style={{ marginLeft: 6 }}>
+                                  archived
+                                </span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="muted" style={{ fontSize: '0.75rem', marginTop: 12 }}>
+                        No repos selected yet.
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
               <Link

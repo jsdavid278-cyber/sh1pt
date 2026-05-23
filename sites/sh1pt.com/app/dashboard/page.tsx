@@ -36,11 +36,19 @@ export default async function Dashboard() {
     .eq('referred_by', profile.id);
 
   const adminClient = getSupabaseServiceClient();
-  const { count: installationCount } = await adminClient
+  const { data: activeInstallations } = await adminClient
     .from('github_installations')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('profile_id', profile.id)
     .eq('status', 'active');
+  const installationIds = (activeInstallations ?? []).map((installation) => installation.id);
+  const { count: selectedRepoCount } = installationIds.length
+    ? await adminClient
+        .from('github_installation_repos')
+        .select('id', { count: 'exact', head: true })
+        .in('installation_pk', installationIds)
+    : { count: 0 };
+  const installationCount = installationIds.length;
 
   const h = await headers();
   const host = h.get('x-forwarded-host') ?? h.get('host');
@@ -116,7 +124,9 @@ export default async function Dashboard() {
                 </div>
                 <div style={{ fontSize: '1.05rem', marginTop: '0.25rem' }}>
                   {installationCount && installationCount > 0
-                    ? `${installationCount} GitHub installation${installationCount === 1 ? '' : 's'} connected`
+                    ? `${installationCount} GitHub installation${installationCount === 1 ? '' : 's'} connected · ${
+                        selectedRepoCount ?? 0
+                      } repo${selectedRepoCount === 1 ? '' : 's'} selected`
                     : 'Connect GitHub to install workflow packs across your repos'}
                 </div>
               </div>
