@@ -3,25 +3,22 @@ import Script from 'next/script';
 const TRACK_SCRIPT = `
 (function(){
   try {
-    var endpoint = '/api/crawlproof/track';
+    var endpoint = 'https://crawlproof.com/api/track';
+    var site = '09d382f0-1b98-4d28-b360-78eaf4e030f2';
     function send() {
       var body = JSON.stringify({
+        site: site,
         ref: document.referrer || null,
         path: location.pathname + location.search
       });
-      if (navigator.sendBeacon) {
-        try {
-          var blob = new Blob([body], { type: 'application/json' });
-          if (navigator.sendBeacon(endpoint, blob)) return;
-        } catch (_) {}
-      }
       try {
         fetch(endpoint, {
           method: 'POST',
           keepalive: true,
           headers: { 'Content-Type': 'application/json' },
           body: body,
-          credentials: 'same-origin'
+          credentials: 'omit',
+          mode: 'no-cors'
         }).catch(function(){});
       } catch (_) {}
     }
