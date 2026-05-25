@@ -64,3 +64,36 @@ create policy "Service role full access on ai_phone_leads"
   for all
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
+
+create table if not exists public.telnyx_voice_handoffs (
+  id uuid default gen_random_uuid() primary key,
+  source_call_session_id text not null unique,
+  source_call_control_id text,
+  original_caller_number text not null,
+  owner_number text not null,
+  summary text not null,
+  status text not null default 'owner_call_requested',
+  owner_call_control_id text,
+  caller_call_control_id text,
+  recording_url text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_telnyx_voice_handoffs_status
+  on public.telnyx_voice_handoffs (status);
+create index if not exists idx_telnyx_voice_handoffs_created_at
+  on public.telnyx_voice_handoffs (created_at desc);
+create index if not exists idx_telnyx_voice_handoffs_original_caller
+  on public.telnyx_voice_handoffs (original_caller_number);
+
+alter table public.telnyx_voice_handoffs enable row level security;
+
+drop policy if exists "Service role full access on telnyx_voice_handoffs"
+  on public.telnyx_voice_handoffs;
+create policy "Service role full access on telnyx_voice_handoffs"
+  on public.telnyx_voice_handoffs
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');

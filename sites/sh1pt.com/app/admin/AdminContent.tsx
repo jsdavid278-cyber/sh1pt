@@ -20,9 +20,10 @@ type TelnyxVoiceConfig = {
   status: {
     apiKeySet: boolean;
     publicKeySet: boolean;
+    connectionIdSet: boolean;
+    fromNumberSet: boolean;
+    ownerPhoneNumberSet: boolean;
     signatureVerificationDisabled: boolean;
-    assistantWebhookSet: boolean;
-    assistantWebhookSigningSet: boolean;
     voice: string;
     language: string;
   };
@@ -237,8 +238,9 @@ export default function AdminContent({ ghStatus }: { ghStatus: GithubAppStatus }
         >
           <StatusPill label="TELNYX_API_KEY" ok={telnyxVoice?.status.apiKeySet ?? false} />
           <StatusPill label="TELNYX_PUBLIC_KEY" ok={telnyxVoice?.status.publicKeySet ?? false} />
-          <StatusPill label="Assistant URL" ok={telnyxVoice?.status.assistantWebhookSet ?? false} />
-          <StatusPill label="Assistant signing" ok={telnyxVoice?.status.assistantWebhookSigningSet ?? false} />
+          <StatusPill label="Connection ID" ok={telnyxVoice?.status.connectionIdSet ?? false} />
+          <StatusPill label="From number" ok={telnyxVoice?.status.fromNumberSet ?? false} />
+          <StatusPill label="Owner number" ok={telnyxVoice?.status.ownerPhoneNumberSet ?? false} />
         </div>
         {telnyxVoice?.status.signatureVerificationDisabled && (
           <p style={{ color: '#fbbf24', marginTop: 12, fontSize: '0.8rem' }}>
