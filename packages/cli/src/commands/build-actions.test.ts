@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { actionsCmd, auditWorkflowContent } from './build-actions.js';
+import { auditWorkflowContent, createActionsCmd } from './build-actions.js';
 
 describe('actions command aliases', () => {
+  const actionsCmd = createActionsCmd();
   it('supports `info` as an alias for `show`', () => {
     const showCmd = actionsCmd.commands.find((c) => c.name() === 'show');
     expect(showCmd).toBeDefined();
     expect(showCmd?.aliases()).toContain('info');
+  });
+
+  it('supports a search subcommand for pack discovery', () => {
+    const searchCmd = actionsCmd.commands.find((c) => c.name() === 'search');
+    expect(searchCmd).toBeDefined();
   });
 });
 
