@@ -17,6 +17,7 @@ export type NormalizedTelnyxVoiceEvent = {
   callControlId: string | null;
   callSessionId: string | null;
   callLegId: string | null;
+  conferenceId: string | null;
   fromNumber: string | null;
   toNumber: string | null;
   direction: string | null;
@@ -35,32 +36,86 @@ export type TelnyxClientState =
   | { role: 'caller_bridge'; handoffId: string; ownerCallControlId: string };
 
 export function parseTelnyxVoiceEvent(rawBody: string): TelnyxVoiceEvent {
+  const body = rawBody.trim();
   try {
-    const parsed = JSON.parse(rawBody) as unknown;
+    const parsed = JSON.parse(body) as unknown;
     return typeof parsed === 'object' && parsed ? (parsed as TelnyxVoiceEvent) : {};
   } catch {
-    return {};
+    return parseTelnyxFormEvent(stripBodyQuotes(body));
   }
 }
 
 export function normalizeTelnyxVoiceEvent(event: TelnyxVoiceEvent): NormalizedTelnyxVoiceEvent {
   const payload = event.data?.payload ?? {};
   return {
-    eventId: stringValue(event.data?.id) ?? stringValue(payload.id) ?? null,
+    eventId: stringValue(event.data?.id) ?? stringValue(payload.id) ?? stringValue(payload.EventId) ?? null,
     eventType: stringValue(event.data?.event_type) ?? 'unknown',
     occurredAt: stringValue(event.data?.occurred_at) ?? null,
-    callControlId: stringValue(payload.call_control_id) ?? stringValue(payload.call_control_id_v2) ?? null,
-    callSessionId: stringValue(payload.call_session_id) ?? null,
-    callLegId: stringValue(payload.call_leg_id) ?? null,
-    fromNumber: phoneNumber(payload.from) ?? null,
-    toNumber: phoneNumber(payload.to) ?? null,
-    direction: stringValue(payload.direction) ?? null,
+    callControlId: stringValue(payload.call_control_id) ?? stringValue(payload.call_control_id_v2) ?? stringValue(payload.CallSid) ?? null,
+    callSessionId:
+      stringValue(payload.call_session_id) ??
+      stringValue(payload.CallSessionSid) ??
+      stringValue(payload.CallSessionId) ??
+      stringValue(payload.SipHeader_X_RTC_CALLID) ??
+      null,
+    callLegId:
+      stringValue(payload.call_leg_id) ??
+      stringValue(payload.CallLegSid) ??
+      stringValue(payload.CallSidLegacy) ??
+      stringValue(payload.SipHeader_X_rtc_leg_uuid) ??
+      null,
+    conferenceId: stringValue(payload.conference_id) ?? stringValue(payload.ConferenceSid) ?? null,
+    fromNumber: phoneNumber(payload.from) ?? phoneNumber(payload.From) ?? null,
+    toNumber: phoneNumber(payload.to) ?? phoneNumber(payload.To) ?? null,
+    direction: stringValue(payload.direction) ?? lowerString(payload.Direction) ?? null,
     transcript: transcriptText(payload) ?? null,
     transcriptionIsFinal: transcriptionIsFinal(payload),
     digits: stringValue(payload.digits) ?? null,
     speech: speechText(payload) ?? null,
     clientState: parseClientState(stringValue(payload.client_state)),
   };
+}
+
+function parseTelnyxFormEvent(rawBody: string): TelnyxVoiceEvent {
+  const params = new URLSearchParams(rawBody);
+  const payload = Object.fromEntries(params);
+  if (!Object.keys(payload).length) return {};
+  return {
+    data: {
+      id: formEventId(payload),
+      event_type: formEventType(payload),
+      occurred_at: new Date().toISOString(),
+      payload,
+    },
+  };
+}
+
+function formEventId(payload: Record<string, string>): string | undefined {
+  const callSid = payload.CallSid || payload.CallSidLegacy;
+  const status = payload.CallStatus || 'unknown';
+  const callId = payload.SipHeader_X_RTC_CALLID || payload['SipHeader_X-RTC-CALLID'];
+  return callSid || callId ? `texml:${callSid || callId}:${status}` : undefined;
+}
+
+function formEventType(payload: Record<string, string>): string {
+  const status = payload.CallStatus?.toLowerCase();
+  if (formTranscript(payload) && status !== 'completed') return 'call.transcription';
+  if (status === 'in-progress') return 'texml.call.answered';
+  if (status === 'completed') return 'texml.call.completed';
+  if (status === 'busy' || status === 'failed' || status === 'no-answer' || status === 'canceled') {
+    return 'texml.call.ended';
+  }
+  return status ? `texml.call.${status}` : 'texml.call.status';
+}
+
+function stripBodyQuotes(value: string): string {
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    return value.slice(1, -1);
+  }
+  return value;
 }
 
 export function verifyTelnyxWebhook(input: {
@@ -193,6 +248,49 @@ export async function bridgeCalls(
   });
 }
 
+export async function createConference(input: {
+  callControlId: string;
+  name: string;
+  commandTag: string;
+}): Promise<{ conferenceId: string | null; name: string | null }> {
+  const response = await telnyxPost<{
+    data?: { id?: string; name?: string };
+  }>('/conferences', {
+    call_control_id: input.callControlId,
+    name: input.name,
+    max_participants: 3,
+    beep_enabled: 'never',
+    command_id: commandId(input.commandTag, 'conference-create'),
+  });
+  return {
+    conferenceId: response.data?.id ?? null,
+    name: response.data?.name ?? null,
+  };
+}
+
+export async function joinConference(
+  conferenceId: string,
+  callControlId: string,
+  commandTag: string,
+  clientState?: TelnyxClientState,
+): Promise<void> {
+  await telnyxPost(`/conferences/${encodeURIComponent(conferenceId)}/actions/join`, {
+    call_control_id: callControlId,
+    beep_enabled: 'never',
+    command_id: commandId(commandTag, 'conference-join'),
+    ...(clientState ? { client_state: encodeClientState(clientState) } : {}),
+  });
+}
+
+export async function startConferenceRecording(conferenceId: string, commandTag: string): Promise<void> {
+  await telnyxPost(`/conferences/${encodeURIComponent(conferenceId)}/actions/record_start`, {
+    format: 'mp3',
+    channels: 'dual',
+    play_beep: true,
+    command_id: commandId(commandTag, 'conference-record'),
+  });
+}
+
 export async function startRecording(
   callControlId: string,
   commandTag: string,
@@ -265,7 +363,16 @@ function validTimestamp(value: string, toleranceSeconds: number): boolean {
 }
 
 function transcriptText(payload: Record<string, unknown>): string | undefined {
-  const direct = stringValue(payload.transcript) ?? stringValue(payload.transcription);
+  const direct =
+    stringValue(payload.transcript) ??
+    stringValue(payload.Transcript) ??
+    stringValue(payload.transcription) ??
+    stringValue(payload.TranscriptionText) ??
+    stringValue(payload.SpeechResult) ??
+    stringValue(payload.summary) ??
+    stringValue(payload.Summary) ??
+    stringValue(payload.post_conversation_summary) ??
+    stringValue(payload.PostConversationSummary);
   if (direct) return direct;
   const result = payload.result;
   if (isObject(result)) {
@@ -284,7 +391,7 @@ function transcriptText(payload: Record<string, unknown>): string | undefined {
 function speechText(payload: Record<string, unknown>): string | undefined {
   const speech = payload.speech;
   if (isObject(speech)) return stringValue(speech.transcript) ?? stringValue(speech.text);
-  return stringValue(payload.speech);
+  return stringValue(payload.speech) ?? stringValue(payload.SpeechResult);
 }
 
 function transcriptionIsFinal(payload: Record<string, unknown>): boolean | null {
@@ -302,6 +409,25 @@ function phoneNumber(value: unknown): string | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function lowerString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value.toLowerCase() : undefined;
+}
+
+function formTranscript(payload: Record<string, string>): string | undefined {
+  return (
+    payload.transcript ||
+    payload.Transcript ||
+    payload.transcription ||
+    payload.TranscriptionText ||
+    payload.SpeechResult ||
+    payload.summary ||
+    payload.Summary ||
+    payload.post_conversation_summary ||
+    payload.PostConversationSummary ||
+    undefined
+  );
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

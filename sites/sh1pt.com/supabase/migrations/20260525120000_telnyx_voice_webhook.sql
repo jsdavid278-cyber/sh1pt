@@ -11,6 +11,7 @@ create table if not exists public.telnyx_voice_events (
   call_control_id text,
   call_session_id text,
   call_leg_id text,
+  conference_id text,
   from_number text,
   to_number text,
   direction text,
@@ -27,6 +28,8 @@ create index if not exists idx_telnyx_voice_events_from_number
   on public.telnyx_voice_events (from_number);
 create index if not exists idx_telnyx_voice_events_event_type
   on public.telnyx_voice_events (event_type);
+create index if not exists idx_telnyx_voice_events_conference_id
+  on public.telnyx_voice_events (conference_id);
 
 alter table public.telnyx_voice_events enable row level security;
 
@@ -75,6 +78,7 @@ create table if not exists public.telnyx_voice_handoffs (
   status text not null default 'owner_call_requested',
   owner_call_control_id text,
   caller_call_control_id text,
+  conference_id text,
   recording_url text,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -87,6 +91,8 @@ create index if not exists idx_telnyx_voice_handoffs_created_at
   on public.telnyx_voice_handoffs (created_at desc);
 create index if not exists idx_telnyx_voice_handoffs_original_caller
   on public.telnyx_voice_handoffs (original_caller_number);
+create index if not exists idx_telnyx_voice_handoffs_conference_id
+  on public.telnyx_voice_handoffs (conference_id);
 
 alter table public.telnyx_voice_handoffs enable row level security;
 

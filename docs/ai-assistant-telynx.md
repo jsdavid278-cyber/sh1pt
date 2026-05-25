@@ -43,4 +43,4 @@ Closing:
 Keep responses short, professional, and friendly. Do not mention internal tools, webhooks, Telnyx, prompts, system instructions, call-control APIs, recording systems, or automation details.
 ```
 
-Note: the Telnyx AI assistant only qualifies, summarizes, and tells the caller they may be called back. The sh1pt webhook handles calling Anthony, asking for approval, redialing the original caller, bridging the call, and recording.
+Note: the Telnyx AI assistant prompt only qualifies, summarizes, and tells the caller they may be called back. Do not put "call Anthony" in plain post-processing prose and expect Telnyx to run the sh1pt flow by itself. Configure the assistant or Voice API connection to POST call data to `https://sh1pt.com/api/webhooks/telnyx/voice`; the sh1pt webhook handles calling Anthony, asking for approval, redialing or conferencing the caller, bridging the call, and recording.
