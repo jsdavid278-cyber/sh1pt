@@ -37,6 +37,7 @@ export default function DocsPage() {
                 <strong style={{ color: 'var(--fg)' }}>Auxiliary</strong>
                 <ul className="muted" style={{ paddingLeft: '1.1rem', margin: '0.3rem 0' }}>
                   <li><a href="#login">login</a></li>
+                  <li><a href="#run">run</a></li>
                   <li><a href="#secret">secret</a></li>
                   <li><a href="#config">config</a></li>
                   <li><a href="#skills">skills</a></li>
@@ -64,6 +65,7 @@ export default function DocsPage() {
           </p>
           <ul className="muted" style={{ paddingLeft: '1.2rem' }}>
             <li><code>--from &lt;input&gt;</code> — accepted by all four primary verbs. <code>&lt;input&gt;</code> can be a git URL, a live URL, a local path, or a manifest doc. sh1pt sniffs the kind and seeds the workflow.</li>
+            <li><code>--cloud</code> — hands durable work to Sh1pt Cloud where supported: remote builds, hosted submissions, cloud-vaulted secrets, and scheduled iterate loops.</li>
             <li><code>--json</code> — every <code>status</code> / <code>list</code> subcommand emits machine-readable JSON instead of the human view.</li>
             <li><code>--dry-run</code> — supported by anything that spends money, ships bits, or sends mail. Validates without firing.</li>
             <li><code>--help</code> — every command prints its own help. <code>sh1pt --help</code> prints the top-level tree.</li>
@@ -171,17 +173,21 @@ export default function DocsPage() {
             options={[
               { flag: '-t, --target <id...>', description: 'target subset' },
               { flag: '-c, --channel <name>', description: 'stable | beta | canary' },
+              { flag: '--cloud', description: 'run submission, retries, polling, and logs in sh1pt cloud' },
               { flag: '--dry-run', description: 'simulate without uploading' },
               { flag: '--skip-lint', description: 'skip policy linter (not recommended)' },
             ]}
-            examples={[{ command: 'sh1pt promote ship --channel beta --dry-run' }]}
+            examples={[
+              { command: 'sh1pt promote ship --channel beta --dry-run' },
+              { command: 'sh1pt promote ship --cloud --target appstore play npm docker' },
+            ]}
           />
           <CommandBlock signature="sh1pt promote ship init" description="Scaffold sh1pt.config.ts in the current project (interactive)." examples={[{ command: 'sh1pt promote ship init' }]} />
           <CommandBlock signature="sh1pt promote ship setup" description="Connect store credentials. One OAuth per store where possible; checklists for human-only steps." examples={[{ command: 'sh1pt promote ship setup --store appstore play --poll' }]} />
-          <CommandBlock signature="sh1pt promote ship status" description="Per-target release status (live / in-review)." examples={[{ command: 'sh1pt promote ship status --json' }]} />
+          <CommandBlock signature="sh1pt promote ship status" description="Per-target release status (live / in-review)." examples={[{ command: 'sh1pt promote ship status --json' }, { command: 'sh1pt ship status -t appstore' }]} />
           <CommandBlock signature="sh1pt promote ship rollback" description="Roll back the latest release on one or more targets." examples={[{ command: 'sh1pt promote ship rollback -t play' }]} />
           <CommandBlock signature="sh1pt promote ship lint" description="Run the policy linter (spammy titles, duplicate metadata, invalid bundle ids, reckless submission rate). Auto-runs on ship." options={[{ flag: '--strict', description: 'exit non-zero on warnings as well' }]} examples={[{ command: 'sh1pt promote ship lint --strict --json' }]} />
-          <CommandBlock signature="sh1pt promote ship logs" description="Tail build/ship logs." examples={[{ command: 'sh1pt promote ship logs -t appstore -f' }]} />
+          <CommandBlock signature="sh1pt promote ship logs" description="Tail build/ship logs." examples={[{ command: 'sh1pt promote ship logs -t appstore -f' }, { command: 'sh1pt run logs run_123 -f' }]} />
           <CommandBlock signature="sh1pt promote ship target add|remove|list|available <id>" description="Manage targets in the manifest." examples={[{ label: 'add', command: 'sh1pt promote ship target add pkg-homebrew' }, { label: 'list available', command: 'sh1pt promote ship target available' }]} />
 
           <h3 style={{ marginTop: '2.5rem' }}>promote merch — print &amp; ship swag</h3>
@@ -415,10 +421,11 @@ export default function DocsPage() {
             description="Daemon mode — run a cycle on every significant metric change."
             options={[
               { flag: '--agent', description: 'agent id' },
+              { flag: '--cloud', description: 'schedule and run the watch loop in sh1pt cloud' },
               { flag: '--interval <seconds>', description: 're-check interval (default: 3600)' },
               { flag: '--quiet-hours <start-end>', description: 'e.g. 22-08 to pause overnight' },
             ]}
-            examples={[{ command: 'sh1pt iterate watch --agent claude --interval 1800 --quiet-hours 22-08' }]}
+            examples={[{ command: 'sh1pt iterate watch --agent claude --interval 1800 --quiet-hours 22-08' }, { command: 'sh1pt iterate watch --cloud' }]}
           />
           <CommandBlock signature="sh1pt iterate goals [kv...]" description="Declare success metrics iterate steers toward. With no args, lists current goals." examples={[{ command: 'sh1pt iterate goals conversion=8% cpi=2.00 churn=5%' }]} />
           <CommandBlock
@@ -469,6 +476,28 @@ export default function DocsPage() {
             description="Authenticate with sh1pt cloud (device-code flow). Token is written to ~/.sh1pt/credentials. Self-host core works without an account; cloud features need it."
             examples={[{ command: 'sh1pt login' }]}
           />
+        </div>
+      </section>
+
+      {/* ---------------- run ---------------- */}
+      <section id="run">
+        <div className="container">
+          <h2>run</h2>
+          <p className="muted" style={{ maxWidth: 780 }}>
+            Inspect durable Sh1pt Cloud runs created by <code>build --cloud</code>, <code>ship --cloud</code>, hosted RepoOps, and cloud iterate loops.
+          </p>
+          <CommandBlock
+            signature="sh1pt run list"
+            description="List recent cloud runs for the current project."
+            options={[
+              { flag: '--project <id>', description: 'filter to one cloud project' },
+              { flag: '--status <status>', description: 'queued | running | succeeded | failed | canceled' },
+              { flag: '--json', description: 'emit machine-readable JSON' },
+            ]}
+            examples={[{ command: 'sh1pt run list' }, { command: 'sh1pt run list --status running --json' }]}
+          />
+          <CommandBlock signature="sh1pt run status <runId>" description="Show one cloud run status, timing, targets, and artifact summary." examples={[{ command: 'sh1pt run status run_123' }]} />
+          <CommandBlock signature="sh1pt run logs <runId>" description="Print or follow logs for one cloud run." options={[{ flag: '-f, --follow', description: 'stream logs until the run finishes' }, { flag: '--target <id>', description: 'filter logs to one target' }]} examples={[{ command: 'sh1pt run logs run_123 -f' }]} />
         </div>
       </section>
 

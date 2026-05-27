@@ -65,6 +65,7 @@ iterateCmd
   .command('watch')
   .description('Daemon mode — run a cycle on every significant metric change')
   .option('--agent <id>', 'claude | codex | qwen', 'claude')
+  .option('--cloud', 'schedule and run the watch loop in sh1pt cloud')
   .option('--interval <seconds>', 're-check interval', Number, 3600)
   .option('--quiet-hours <start-end>', 'e.g. 22-08 (24h local) to pause overnight')
   .action((opts) => {

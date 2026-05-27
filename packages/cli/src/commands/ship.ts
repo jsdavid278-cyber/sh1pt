@@ -14,16 +14,18 @@ export const shipCmd = new Command('ship')
   .description('Publish built artifacts to their target stores and registries')
   .option('-t, --target <id...>', 'target ids to ship (default: all enabled)')
   .option('-c, --channel <name>', 'release channel', 'stable')
+  .option('--cloud', 'run submission, retries, polling, and logs in sh1pt cloud')
   .option('--dry-run', 'simulate without uploading')
   .option('--skip-lint', 'skip the pre-ship policy linter (not recommended)')
-  .action(async (opts: { target?: string[]; channel: string; dryRun?: boolean; skipLint?: boolean }) => {
+  .action(async (opts: { target?: string[]; channel: string; cloud?: boolean; dryRun?: boolean; skipLint?: boolean }) => {
     const targets = opts.target?.join(', ') ?? 'all enabled';
     const tag = opts.dryRun ? kleur.yellow('[dry-run]') : kleur.green('[live]');
+    const where = opts.cloud ? 'cloud' : 'local';
     if (!opts.skipLint) {
       console.log(kleur.dim('running pre-ship policy linter…'));
       // TODO: load manifest, call lint(ctx) — abort on errors unless --skip-lint
     }
-    console.log(`${tag} ship · channel=${opts.channel} · targets=${targets}`);
+    console.log(`${tag} ship (${where}) · channel=${opts.channel} · targets=${targets}`);
     // TODO: load manifest, resolve latest build, invoke Target.ship(), record release
   });
 

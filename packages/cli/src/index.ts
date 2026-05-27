@@ -18,6 +18,7 @@ import { skillsCmd } from './commands/skills.js';
 import { agentsCmd } from './commands/agents.js';
 import { deployCmd } from './commands/deploy.js';
 import { openapiCmd } from './commands/openapi.js';
+import { runsCmd } from './commands/runs.js';
 
 const program = new Command();
 
@@ -49,6 +50,7 @@ program.addCommand(loginCmd);
 program.addCommand(logoutCmd);
 program.addCommand(secretsCmd);
 program.addCommand(configCmd);
+program.addCommand(runsCmd);           // run      · inspect sh1pt cloud runs/logs/status
 program.addCommand(createActionsCmd()); // actions  · install/audit GitHub Actions workflow packs
 program.addCommand(skillsCmd);          // skills   · package/promote SKILL.md agent skills across marketplaces
 program.addCommand(agentsCmd);      // agents   · generate/run/talk with AI coding CLIs

@@ -267,7 +267,7 @@ See [`CLI_INTEGRATIONS.md`](./CLI_INTEGRATIONS.md) for the CLI-backed integratio
 
 ---
 
-`sh1pt` is Expo for *everywhere*: web, mobile (iOS/Android), desktop (macOS/Windows/Linux/SteamOS), wearables, TV, XR, browser extensions, CLIs, SDKs, package managers, CDNs, container registries, app-hosting platforms — all driven by one manifest, one CLI, and one cloud.
+`sh1pt` is Expo for *everywhere*: web, mobile (iOS/Android), desktop (macOS/Windows/Linux/SteamOS), wearables, TV, XR, browser extensions, CLIs, SDKs, package managers, CDNs, container registries, app-hosting platforms — all driven by one manifest, one open-source CLI, and one hosted distribution control plane.
 
 ## Who it's for
 
@@ -275,7 +275,9 @@ See [`CLI_INTEGRATIONS.md`](./CLI_INTEGRATIONS.md) for the CLI-backed integratio
 
 ## Pricing
 
-**$499/year** for the managed cloud — build runners (Linux + macOS + Windows), credentials vault, store submission monitoring, webhook alerts, policy linter, rate-limit protection. Self-host core is OSS.
+Free OSS CLI for local builds, dry-runs, manifests, adapters, and static linting. Sh1pt Cloud is the paid control plane for durable work: build runners (Linux + macOS + Windows), credentials vault, store submission monitoring, persistent logs/artifacts, webhook alerts, policy linter, rate-limit protection, and team workflows.
+
+Current pricing: **$244/year founder access**, then **$49/month** or **$499/year** for Pro at launch.
 
 ## CLI surface
 
@@ -295,7 +297,7 @@ sh1pt build [--target X] [--channel C] [--cloud]
 
 sh1pt promote                                       (default: launch ads)
   setup / status / stop / creatives                 ad-platform ops
-  ship [--target X] [--channel C] [--dry-run]       publish to stores/registries
+  ship [--target X] [--channel C] [--cloud]         publish to stores/registries
     init / setup / status / rollback / lint / logs
     target add|remove|list|available
   merch                                             swag — Printful / Printify
@@ -327,6 +329,7 @@ sh1pt openapi all <spec>                            all three, in parallel
 sh1pt automation stagehand setup                    AI browser automation (Browserbase, local Chromium)
 
 sh1pt login                                         (auxiliary)
+sh1pt run list|status|logs                          inspect cloud runs
 sh1pt secret set|get|list|rm                        (auxiliary — credentials vault)
 sh1pt actions list|search|info                      discover built-in GitHub Actions packs
 sh1pt actions plan|install|audit                    preview, install, and audit workflow packs

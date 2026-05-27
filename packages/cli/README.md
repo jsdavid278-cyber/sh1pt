@@ -73,7 +73,9 @@ mkdir my-app && cd my-app
 sh1pt config stack set             # prompts: node / bun / python / rust
 sh1pt ship init                    # scaffolds sh1pt.config.ts
 # declare targets in sh1pt.config.ts …
-sh1pt promote ship --channel beta  # build + lint + submit everywhere
+sh1pt build --cloud                # remote build runners + persisted logs
+sh1pt promote ship --cloud --channel beta
+sh1pt run logs <run-id> -f         # follow the cloud run
 ```
 
 ## Links
