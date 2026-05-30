@@ -183,13 +183,17 @@ function verifyCoinPaySignature(
   secret: string,
   toleranceSeconds = 300,
 ): void {
-  const parts = Object.fromEntries(signatureHeader.split(',').map((part) => {
+  let timestamp: string | undefined;
+  const signatures: string[] = [];
+
+  for (const part of signatureHeader.split(',')) {
     const [key, ...value] = part.trim().split('=');
-    return [key, value.join('=')];
-  }));
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature) throw new Error('CoinPay signature missing t or v1');
+    const joinedValue = value.join('=');
+    if (key === 't') timestamp = joinedValue;
+    if (key === 'v1' && joinedValue) signatures.push(joinedValue);
+  }
+
+  if (!timestamp || signatures.length === 0) throw new Error('CoinPay signature missing t or v1');
 
   const timestampSeconds = Number(timestamp);
   if (!Number.isFinite(timestampSeconds)) throw new Error('CoinPay signature timestamp is invalid');
@@ -201,11 +205,15 @@ function verifyCoinPaySignature(
   const expected = createHmac('sha256', secret)
     .update(`${timestamp}.${rawBody}`)
     .digest('hex');
-  const actualBuffer = Buffer.from(signature, 'hex');
   const expectedBuffer = Buffer.from(expected, 'hex');
-  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
-    throw new Error('Invalid CoinPay webhook signature');
+  for (const signature of signatures) {
+    const actualBuffer = Buffer.from(signature, 'hex');
+    if (actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)) {
+      return;
+    }
   }
+
+  throw new Error('Invalid CoinPay webhook signature');
 }
 
 function normalizeWebhook(event: CoinPayWebhookEvent): Webhook {
