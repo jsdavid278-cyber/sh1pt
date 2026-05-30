@@ -96,6 +96,24 @@ describe('payment-stripe', () => {
     });
   });
 
+  it('accepts any matching Stripe v1 signature when multiple are present', async () => {
+    const raw = JSON.stringify({ type: 'checkout.session.completed' });
+    const secret = 'whsec_test';
+    const timestamp = '1700000000';
+    const signature = createHmac('sha256', secret)
+      .update(`${timestamp}.${raw}`)
+      .digest('hex');
+
+    const webhook = await adapter.verifyWebhook(
+      ctx({ STRIPE_WEBHOOK_SECRET: secret }),
+      raw,
+      `t=${timestamp},v1=${signature},v1=${'0'.repeat(64)}`,
+      {},
+    );
+
+    expect(webhook.type).toBe('checkout.session.completed');
+  });
+
   it('rejects invalid Stripe webhook signatures', async () => {
     await expect(adapter.verifyWebhook(
       ctx({ STRIPE_WEBHOOK_SECRET: 'whsec_test' }),
