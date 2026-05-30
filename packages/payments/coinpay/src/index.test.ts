@@ -169,6 +169,24 @@ describe('payment-coinpay', () => {
     });
   });
 
+  it('accepts any matching CoinPay v1 signature when multiple are present', async () => {
+    const raw = JSON.stringify({ type: 'payment.confirmed' });
+    const secret = 'whsec_test';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHmac('sha256', secret)
+      .update(`${timestamp}.${raw}`)
+      .digest('hex');
+
+    const webhook = await payment.verifyWebhook(
+      ctx({ COINPAY_WEBHOOK_SECRET: secret }),
+      raw,
+      `t=${timestamp},v1=${signature},v1=${'0'.repeat(64)}`,
+      {},
+    );
+
+    expect(webhook.type).toBe('payment.confirmed');
+  });
+
   it('rejects invalid CoinPay webhook signatures', async () => {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     await expect(payment.verifyWebhook(
