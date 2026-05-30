@@ -185,6 +185,15 @@ describe('payment-coinpay', () => {
     );
 
     expect(webhook.type).toBe('payment.confirmed');
+
+    const webhookWithMatchingSignatureLast = await payment.verifyWebhook(
+      ctx({ COINPAY_WEBHOOK_SECRET: secret }),
+      raw,
+      `t=${timestamp},v1=${'0'.repeat(64)},v1=${signature}`,
+      {},
+    );
+
+    expect(webhookWithMatchingSignatureLast.type).toBe('payment.confirmed');
   });
 
   it('rejects invalid CoinPay webhook signatures', async () => {
