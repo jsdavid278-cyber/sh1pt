@@ -162,25 +162,30 @@ async function readStripeJson<T>(res: Response): Promise<T> {
 }
 
 function verifyStripeSignature(rawBody: string, header: string, secret: string): void {
-  const parts = Object.fromEntries(
-    header.split(',').map((part) => {
-      const [key, value] = part.split('=');
-      return [key, value];
-    }),
-  );
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature) throw new Error('Stripe-Signature missing t or v1');
+  let timestamp: string | undefined;
+  const signatures: string[] = [];
+
+  for (const part of header.split(',')) {
+    const [key, value] = part.split('=');
+    if (key === 't') timestamp = value;
+    if (key === 'v1' && value) signatures.push(value);
+  }
+
+  if (!timestamp || signatures.length === 0) throw new Error('Stripe-Signature missing t or v1');
 
   const expected = createHmac('sha256', secret)
     .update(`${timestamp}.${rawBody}`)
     .digest('hex');
 
-  const actualBuffer = Buffer.from(signature, 'hex');
   const expectedBuffer = Buffer.from(expected, 'hex');
-  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
-    throw new Error('Invalid Stripe webhook signature');
+  for (const signature of signatures) {
+    const actualBuffer = Buffer.from(signature, 'hex');
+    if (actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)) {
+      return;
+    }
   }
+
+  throw new Error('Invalid Stripe webhook signature');
 }
 
 function normalizeStripeStatus(status: unknown): Webhook['status'] | undefined {
