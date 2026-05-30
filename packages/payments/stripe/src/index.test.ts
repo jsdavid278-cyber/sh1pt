@@ -112,6 +112,15 @@ describe('payment-stripe', () => {
     );
 
     expect(webhook.type).toBe('checkout.session.completed');
+
+    const webhookWithMatchingSignatureLast = await adapter.verifyWebhook(
+      ctx({ STRIPE_WEBHOOK_SECRET: secret }),
+      raw,
+      `t=${timestamp},v1=${'0'.repeat(64)},v1=${signature}`,
+      {},
+    );
+
+    expect(webhookWithMatchingSignatureLast.type).toBe('checkout.session.completed');
   });
 
   it('rejects invalid Stripe webhook signatures', async () => {
