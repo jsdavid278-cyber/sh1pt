@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, rmSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -36,16 +36,6 @@ export interface DetectedStack {
  * Inspect a directory root and return detected stack info based on manifest
  * files. Returns undefined if nothing recognizable is found.
  */
-/**
- * Extract a human-readable project name from a Go module path.
- * Strips major-version suffixes so `github.com/user/my-go-app/v2`
- * returns `my-go-app` rather than `v2`.
- */
-function goProjectName(module: string): string {
-  const stripped = module.replace(/\/v\d+$/, '');
-  return stripped.split('/').pop() ?? stripped;
-}
-
 export function detectStack(dir: string): DetectedStack | undefined {
   // Node (package.json)
   const pkgPath = join(dir, 'package.json');
@@ -103,7 +93,7 @@ export function detectStack(dir: string): DetectedStack | undefined {
       return {
         runtime: 'go',
         packageManager: 'go',
-        projectName: modName ? goProjectName(modName) : undefined,
+        projectName: modName ? modName.split('/').pop() : undefined,
       };
     } catch { /* skip */ }
   }
@@ -115,6 +105,12 @@ export function detectStack(dir: string): DetectedStack | undefined {
 
 export interface CloneResult {
   cloneDir: string;
+  stack: DetectedStack | undefined;
+  projectName: string;
+}
+
+export interface LocalPathResult {
+  path: string;
   stack: DetectedStack | undefined;
   projectName: string;
 }
@@ -142,6 +138,41 @@ export function cloneAndDetect(input: ResolvedInput): CloneResult {
   const projectName = stack?.projectName ?? name;
 
   return { cloneDir, stack, projectName };
+}
+
+/**
+ * Inspect a local project directory and detect the same stack metadata used
+ * by git inputs. Throws when the path is missing or points at a file.
+ */
+export function detectLocalPath(input: ResolvedInput): LocalPathResult {
+  if (!input.exists || !existsSync(input.value)) {
+    throw new Error(`local path not found: ${input.value}`);
+  }
+  if (!statSync(input.value).isDirectory()) {
+    throw new Error(`local path must be a directory: ${input.value}`);
+  }
+
+  const stack = detectStack(input.value);
+  const projectName = stack?.projectName ?? input.inferredName ?? 'project';
+
+  return { path: input.value, stack, projectName };
+}
+
+function printBuildSummary(args: {
+  projectName: string;
+  stack: DetectedStack | undefined;
+  channel: string;
+  where: string;
+  sourceLabel: string;
+  sourceValue: string;
+}): void {
+  console.log();
+  console.log(kleur.bold('Build summary'));
+  console.log(`  project:  ${args.projectName}`);
+  console.log(`  stack:    ${args.stack ? `${args.stack.runtime} (${args.stack.packageManager ?? 'unknown'})` : 'unknown'}`);
+  console.log(`  channel:  ${args.channel}`);
+  console.log(`  target:   ${args.where}`);
+  console.log(`  ${args.sourceLabel}:  ${args.sourceValue}`);
 }
 
 // --- Command -----------------------------------------------------------------
@@ -175,6 +206,21 @@ export const buildCmd = new Command('build')
           rmSync(cloneDir, { recursive: true, force: true });
           console.log(kleur.dim('  (clone removed — use --keep-clone to retain)'));
         }
+        return;
+      }
+
+      if (input.kind === 'path') {
+        const { path, stack, projectName } = detectLocalPath(input);
+
+        console.log(kleur.green('Local path inspected'));
+        printBuildSummary({
+          projectName,
+          stack,
+          channel: opts.channel,
+          where,
+          sourceLabel: 'path',
+          sourceValue: path,
+        });
         return;
       }
 
