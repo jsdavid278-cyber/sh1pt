@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
-import { detectStack, cloneAndDetect } from './build.js';
+import { detectStack, cloneAndDetect, detectLocalPath } from './build.js';
 import type { ResolvedInput } from '../input.js';
 
 describe('detectStack', () => {
@@ -101,6 +101,39 @@ describe('detectStack', () => {
     const dir = makeTempDir();
     const result = detectStack(dir);
     expect(result).toBeUndefined();
+  });
+
+  it('detects a local --from path project', () => {
+    const dir = makeTempDir();
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({
+      name: 'local-path-app',
+      packageManager: 'pnpm@9.12.0',
+    }));
+
+    const result = detectLocalPath({
+      kind: 'path',
+      raw: dir,
+      value: dir,
+      inferredName: 'fallback-name',
+      exists: true,
+    });
+
+    expect(result.path).toBe(dir);
+    expect(result.projectName).toBe('local-path-app');
+    expect(result.stack!.runtime).toBe('node');
+    expect(result.stack!.packageManager).toBe('pnpm');
+  });
+
+  it('throws when a local --from path is missing', () => {
+    const dir = join(makeTempDir(), 'missing');
+
+    expect(() => detectLocalPath({
+      kind: 'path',
+      raw: dir,
+      value: dir,
+      inferredName: 'missing',
+      exists: false,
+    })).toThrow('local path not found');
   });
 
   it('prefers package.json over other manifests when multiple exist', () => {
