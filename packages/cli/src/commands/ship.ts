@@ -17,7 +17,7 @@ type TargetSummary = {
   enabled: boolean;
 };
 
-function readTargetSummary(cwd: string, configPath: string): TargetSummary[] {
+export function readTargetSummary(cwd: string, configPath: string): TargetSummary[] {
   const path = configPath.startsWith('/') ? configPath : join(cwd, configPath);
   if (!existsSync(path)) {
     throw new Error(`No ${configPath} found. Run sh1pt ship init first or pass --config <path>.`);
@@ -175,6 +175,7 @@ targetSubCmd
   });
 
 function readObjectBody(source: string, property: string): string | undefined {
+  source = stripComments(source);
   const match = new RegExp(`(?:^|[,{\\s])${escapeRegExp(property)}\\s*:`).exec(source);
   if (!match) return undefined;
   const open = source.indexOf('{', match.index + match[0].length);
@@ -225,7 +226,7 @@ function stripComments(source: string): string {
     }
     if (quote) {
       result += ch;
-      if (ch === quote && prev !== '\\') quote = undefined;
+      if (ch === quote && !isEscaped(source, i)) quote = undefined;
       continue;
     }
     if (ch === '/' && next === '/') {
@@ -262,7 +263,7 @@ function findMatchingBrace(source: string, open: number): number {
       continue;
     }
     if (quote) {
-      if (ch === quote && prev !== '\\') quote = undefined;
+      if (ch === quote && !isEscaped(source, i)) quote = undefined;
       continue;
     }
     if (ch === '/' && next === '/') {
@@ -289,8 +290,8 @@ function findMatchingBrace(source: string, open: number): number {
 }
 
 function readStringProperty(source: string, key: string): string | undefined {
-  const match = new RegExp(`${escapeRegExp(key)}\\s*:\\s*['"]([^'"]+)['"]`).exec(source);
-  return match?.[1];
+  const match = new RegExp(`${escapeRegExp(key)}\\s*:\\s*(?:'([^']*)'|"([^"]*)")`).exec(source);
+  return match?.[1] ?? match?.[2];
 }
 
 function readBooleanProperty(source: string, key: string): boolean | undefined {
@@ -300,4 +301,12 @@ function readBooleanProperty(source: string, key: string): boolean | undefined {
 
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isEscaped(source: string, index: number): boolean {
+  let slashCount = 0;
+  for (let i = index - 1; i >= 0 && source[i] === '\\'; i -= 1) {
+    slashCount += 1;
+  }
+  return slashCount % 2 === 1;
 }
