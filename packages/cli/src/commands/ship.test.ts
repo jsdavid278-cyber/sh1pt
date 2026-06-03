@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { shipCmd } from './ship.js';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { readTargetSummary, shipCmd } from './ship.js';
 
 describe('shipCmd', () => {
   it('is registered as a top-level command named "ship"', () => {
@@ -33,5 +36,62 @@ describe('shipCmd', () => {
     expect(optNames).toContain('--channel');
     expect(optNames).toContain('--dry-run');
     expect(optNames).toContain('--skip-lint');
+  });
+
+  it('ignores targets examples inside comments when reading configured targets', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sh1pt-targets-'));
+    writeFileSync(
+      join(cwd, 'sh1pt.config.ts'),
+      `
+        // Example only: targets: { fake: { use: 'wrong' } }
+        export default {
+          targets: {
+            web: { use: 'next', enabled: false }
+          }
+        };
+      `,
+    );
+
+    expect(readTargetSummary(cwd, 'sh1pt.config.ts')).toEqual([
+      { id: 'web', use: 'next', enabled: false },
+    ]);
+  });
+
+  it('reads string values that contain the opposite quote delimiter', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sh1pt-targets-'));
+    writeFileSync(
+      join(cwd, 'sh1pt.config.ts'),
+      `
+        export default {
+          targets: {
+            web: { use: "foo'adapter" }
+          }
+        };
+      `,
+    );
+
+    expect(readTargetSummary(cwd, 'sh1pt.config.ts')).toEqual([
+      { id: 'web', use: "foo'adapter", enabled: true },
+    ]);
+  });
+
+  it('closes strings after an even run of backslashes before a quote', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sh1pt-targets-'));
+    writeFileSync(
+      join(cwd, 'sh1pt.config.ts'),
+      `
+        export default {
+          targets: {
+            web: { use: "path\\\\", enabled: true },
+            api: { use: 'node' }
+          }
+        };
+      `,
+    );
+
+    expect(readTargetSummary(cwd, 'sh1pt.config.ts')).toEqual([
+      { id: 'web', use: 'path\\\\', enabled: true },
+      { id: 'api', use: 'node', enabled: true },
+    ]);
   });
 });
