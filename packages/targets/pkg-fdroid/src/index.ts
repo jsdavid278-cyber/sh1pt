@@ -77,11 +77,31 @@ function resolveRepoDir(ctx: { projectDir: string }, config: Config): string {
   return isAbsolute(dir) ? dir : join(ctx.projectDir, dir);
 }
 
+const JAVA_RESERVED_WORDS = new Set([
+  'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char',
+  'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum',
+  'extends', 'final', 'finally', 'float', 'for', 'goto', 'if', 'implements',
+  'import', 'instanceof', 'int', 'interface', 'long', 'native', 'new',
+  'package', 'private', 'protected', 'public', 'return', 'short', 'static',
+  'strictfp', 'super', 'switch', 'synchronized', 'this', 'throw', 'throws',
+  'transient', 'try', 'void', 'volatile', 'while', 'true', 'false', 'null',
+]);
+
+function assertPackageName(packageName: string): void {
+  const segment = '[A-Za-z][A-Za-z0-9_]*';
+  const pattern = new RegExp(`^${segment}(\\.${segment})+$`);
+  const segments = packageName.split('.');
+  if (!pattern.test(packageName) || segments.some((part) => JAVA_RESERVED_WORDS.has(part))) {
+    throw new Error(`packageName must be a valid Android package name, got "${packageName}"`);
+  }
+}
+
 export default defineTarget<Config>({
   id: 'pkg-fdroid',
   kind: 'package-manager',
   label: 'F-Droid (Android FOSS repo)',
   async build(ctx, config) {
+    assertPackageName(config.packageName);
     if (config.mode === 'main-repo') {
       ctx.log(`render fdroiddata metadata for ${config.packageName}`);
       const metadataPath = join(ctx.outDir, `${config.packageName}.yml`);
@@ -109,6 +129,7 @@ export default defineTarget<Config>({
     return { artifact: cwd };
   },
   async ship(ctx, config) {
+    assertPackageName(config.packageName);
     if (config.mode === 'main-repo') {
       ctx.log(`open PR against fdroiddata for ${config.packageName}`);
       if (ctx.dryRun) {

@@ -8,6 +8,7 @@ import adapter from './index.js';
 smokeTest(adapter, { idPrefix: 'pkg', requireKind: true });
 
 const tempDirs: string[] = [];
+const invalidPackageNames = ['../escape', 'com.acme/app', 'com..acme', '1com.acme.app', 'com.int.app'];
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
@@ -79,6 +80,25 @@ describe('F-Droid target', () => {
     });
   });
 
+  it('rejects invalid package names before writing metadata artifacts', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-fdroid-'));
+    tempDirs.push(outDir);
+    const ctx = fakeBuildContext({ outDir }) as any;
+    const metadata = {
+      categories: ['Development'],
+      license: 'MIT',
+      sourceRepo: 'https://github.com/acme/app',
+    };
+
+    for (const packageName of invalidPackageNames) {
+      await expect(adapter.build(ctx, {
+        packageName,
+        mode: 'main-repo',
+        metadata,
+      })).rejects.toThrow('packageName');
+    }
+  });
+
   it('keeps dry-run shipping side-effect free for main repo submissions', async () => {
     await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
       packageName: 'com.acme.app',
@@ -95,5 +115,19 @@ describe('F-Droid target', () => {
         metadataFile: 'metadata/com.acme.app.yml',
       },
     });
+  });
+
+  it('rejects invalid package names before shipping', async () => {
+    for (const packageName of invalidPackageNames) {
+      await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+        packageName,
+        mode: 'main-repo',
+        metadata: {
+          categories: ['Development'],
+          license: 'Apache-2.0',
+          sourceRepo: 'https://github.com/acme/app',
+        },
+      })).rejects.toThrow('packageName');
+    }
   });
 });
