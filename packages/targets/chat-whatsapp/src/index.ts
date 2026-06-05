@@ -57,6 +57,8 @@ interface TemplateManifestEntry extends WhatsAppTemplateBody {
 
 const TEMPLATE_NAME_RE = /^[a-z0-9_]+$/;
 const LANGUAGE_RE = /^[a-z]{2,3}(_[A-Z]{2})?$/;
+const GRAPH_ID_RE = /^[A-Za-z0-9_-]+$/;
+const GRAPH_API_VERSION_RE = /^v\d+(?:\.\d+)?$/;
 const DEFAULT_GRAPH_API_VERSION = 'v25.0';
 const DEFAULT_GRAPH_API_BASE_URL = 'https://graph.facebook.com';
 
@@ -66,13 +68,37 @@ function requireText(value: string | undefined, field: string): string {
   return text;
 }
 
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function requireGraphId(value: string | undefined, field: string): string {
+  const id = requireText(value, field);
+  if (!GRAPH_ID_RE.test(id)) {
+    throw new Error(`chat-whatsapp ${field} must be a URL-safe Graph API id`);
+  }
+  return id;
+}
+
 function graphApiVersion(config: Config): string {
-  const version = config.graphApiVersion?.trim() || DEFAULT_GRAPH_API_VERSION;
-  return version.startsWith('v') ? version : `v${version}`;
+  const rawVersion = optionalText(config.graphApiVersion, 'graphApiVersion') ?? DEFAULT_GRAPH_API_VERSION;
+  const version = rawVersion.startsWith('v') ? rawVersion : `v${rawVersion}`;
+  if (!GRAPH_API_VERSION_RE.test(version)) {
+    throw new Error('chat-whatsapp graphApiVersion must look like v25.0');
+  }
+  return version;
 }
 
 function graphApiBaseUrl(config: Config): string {
-  return (config.graphApiBaseUrl?.trim() || DEFAULT_GRAPH_API_BASE_URL).replace(/\/+$/, '');
+  const baseUrl = optionalText(config.graphApiBaseUrl, 'graphApiBaseUrl') ?? DEFAULT_GRAPH_API_BASE_URL;
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error('chat-whatsapp graphApiBaseUrl must be a valid HTTPS URL');
+  }
+  if (parsed.protocol !== 'https:') throw new Error('chat-whatsapp graphApiBaseUrl must use HTTPS');
+  return baseUrl.replace(/\/+$/, '');
 }
 
 function graphUrl(config: Config, path: string): string {
@@ -80,8 +106,10 @@ function graphUrl(config: Config, path: string): string {
 }
 
 function validateBaseConfig(config: Config): void {
-  requireText(config.phoneNumberId, 'phoneNumberId');
-  requireText(config.wabaId, 'wabaId');
+  requireGraphId(config.phoneNumberId, 'phoneNumberId');
+  requireGraphId(config.wabaId, 'wabaId');
+  graphApiVersion(config);
+  graphApiBaseUrl(config);
   const webhookUrl = requireText(config.webhookUrl, 'webhookUrl');
   let parsed: URL;
   try {
@@ -140,8 +168,8 @@ function validateTemplate(template: NonNullable<Config['templates']>[number]): T
 
 function templateManifest(config: Config, version: string) {
   validateBaseConfig(config);
-  const phoneNumberId = requireText(config.phoneNumberId, 'phoneNumberId');
-  const wabaId = requireText(config.wabaId, 'wabaId');
+  const phoneNumberId = requireGraphId(config.phoneNumberId, 'phoneNumberId');
+  const wabaId = requireGraphId(config.wabaId, 'wabaId');
   const webhookUrl = requireText(config.webhookUrl, 'webhookUrl');
   const templates = (config.templates ?? []).map(validateTemplate);
   return {
@@ -234,7 +262,7 @@ export default defineTarget<Config>({
 
     if (typeof fetch !== 'function') throw new Error('global fetch is not available for WhatsApp Graph API calls');
 
-    const tokenKey = config.tokenKey ?? 'WHATSAPP_BUSINESS_TOKEN';
+    const tokenKey = optionalText(config.tokenKey, 'tokenKey') ?? 'WHATSAPP_BUSINESS_TOKEN';
     const token = requireSecret(ctx, tokenKey);
     const submittedTemplates = [];
     for (const template of manifest.templates) {
@@ -247,13 +275,13 @@ export default defineTarget<Config>({
       ctx.log('whatsapp · subscribe app to WABA webhooks');
       subscription = await callGraph(manifest.endpoints.subscribedApps, token, {
         override_callback_uri: manifest.webhookUrl,
-        ...(config.verifyTokenKey ? { verify_token: requireSecret(ctx, config.verifyTokenKey) } : {}),
+        ...(config.verifyTokenKey ? { verify_token: requireSecret(ctx, requireText(config.verifyTokenKey, 'verifyTokenKey')) } : {}),
       });
     }
 
     return {
-      id: `${config.phoneNumberId}@${ctx.version}`,
-      url: `https://business.facebook.com/wa/manage/phone-numbers/?waba_id=${config.wabaId}`,
+      id: `${manifest.phoneNumberId}@${ctx.version}`,
+      url: `https://business.facebook.com/wa/manage/phone-numbers/?waba_id=${manifest.wabaId}`,
       meta: {
         templates: submittedTemplates,
         subscription: subscription ? { success: subscription.success ?? true } : undefined,

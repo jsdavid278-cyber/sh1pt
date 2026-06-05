@@ -78,6 +78,23 @@ describe('WhatsApp Business Cloud API target', () => {
     })).rejects.toThrow('placeholders must be contiguous from {{1}}');
   });
 
+  it('rejects unsafe Graph API identifiers and endpoints', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...baseConfig,
+      phoneNumberId: '123/456',
+    })).rejects.toThrow('phoneNumberId must be a URL-safe Graph API id');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...baseConfig,
+      graphApiVersion: 'beta',
+    })).rejects.toThrow('graphApiVersion must look like v25.0');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...baseConfig,
+      graphApiBaseUrl: 'http://graph.facebook.com',
+    })).rejects.toThrow('graphApiBaseUrl must use HTTPS');
+  });
+
   it('keeps dry-run shipping side-effect free', async () => {
     await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, baseConfig))
       .resolves.toMatchObject({
@@ -87,6 +104,16 @@ describe('WhatsApp Business Cloud API target', () => {
           subscribeApp: true,
         },
       });
+  });
+
+  it('rejects blank secret key names before Graph API calls', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: false,
+      secret: makeVault({ WHATSAPP_BUSINESS_TOKEN: 'mock-token' }),
+    }) as any, {
+      ...baseConfig,
+      tokenKey: '   ',
+    })).rejects.toThrow('chat-whatsapp requires tokenKey');
   });
 
   it('submits templates and subscribes WABA webhooks through Graph API', async () => {
