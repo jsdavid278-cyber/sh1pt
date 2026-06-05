@@ -10,7 +10,35 @@ interface Config {
   packageDir?: string;           // path with jsr.json / deno.json
 }
 
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`pkg-jsr requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function jsrSlug(value: string | undefined, field: string): string {
+  const slug = requireText(value, field);
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
+    throw new Error(`pkg-jsr ${field} must be lowercase letters, numbers, or hyphens`);
+  }
+  return slug;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    scope: jsrSlug(config.scope, 'scope'),
+    packageName: jsrSlug(config.packageName, 'packageName'),
+    packageDir: optionalText(config.packageDir, 'packageDir'),
+  };
+}
+
 function packagePath(ctx: { projectDir: string }, config: Config): string {
+  config = normalizedConfig(config);
   if (!config.packageDir) return ctx.projectDir;
   return isWindowsPath(ctx.projectDir) ? join(ctx.projectDir, config.packageDir) : posix.join(ctx.projectDir, config.packageDir);
 }
@@ -20,10 +48,12 @@ function isWindowsPath(path: string): boolean {
 }
 
 function packageId(config: Config, version: string): string {
+  config = normalizedConfig(config);
   return `@${config.scope}/${config.packageName}@${version}`;
 }
 
 function packageUrl(config: Config): string {
+  config = normalizedConfig(config);
   return `https://jsr.io/@${config.scope}/${config.packageName}`;
 }
 
@@ -32,6 +62,7 @@ export default defineTarget<Config>({
   kind: 'sdk',
   label: 'JSR (jsr.io - TS-native registry)',
   async build(ctx, config) {
+    config = normalizedConfig(config);
     const cwd = packagePath(ctx, config);
     ctx.log(`jsr publish --dry-run for @${config.scope}/${config.packageName}`);
     await exec('npx', ['--yes', 'jsr', 'publish', '--dry-run'], {
@@ -43,6 +74,7 @@ export default defineTarget<Config>({
     return { artifact: cwd };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     ctx.log(`jsr publish for @${config.scope}/${config.packageName}@${ctx.version}`);
     if (ctx.dryRun) return { id: 'dry-run' };
 
