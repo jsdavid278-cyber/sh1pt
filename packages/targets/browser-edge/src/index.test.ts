@@ -86,12 +86,12 @@ describe('browser-edge target adapter', () => {
     expect(result).toEqual({ artifact });
   });
 
-  it('keeps product IDs with path separators inside the output directory', async () => {
+  it('rejects Edge product IDs that are blank or not URL path segments', async () => {
     const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-edge-out-'));
     const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-edge-project-'));
     tempDirs.push(outDir, projectDir);
 
-    const result = await adapter.build(fakeBuildContext({
+    await expect(adapter.build(fakeBuildContext({
       outDir,
       projectDir,
       version: '1.2.3',
@@ -99,11 +99,44 @@ describe('browser-edge target adapter', () => {
     }) as any, {
       productId: '../edge-product',
       sourceDir: 'extension-dist',
-    });
+    })).rejects.toThrow('productId must be a single URL path segment');
 
-    const plan = JSON.parse(await readFile(result.artifact, 'utf-8'));
-    expect(plan.productId).toBe('../edge-product');
-    expect(plan.artifact).toBe(join(outDir, 'edge-product-1.2.3.zip'));
-    expect(plan.command).toEqual(['zip', '-r', join(outDir, 'edge-product-1.2.3.zip'), '.']);
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      projectDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      productId: '   ',
+      sourceDir: 'extension-dist',
+    })).rejects.toThrow('browser-edge requires productId');
+
+    expect(execMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects blank optional text before packaging or publishing', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-edge-out-'));
+    const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-edge-project-'));
+    tempDirs.push(outDir, projectDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      projectDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      productId: 'edge-product',
+      sourceDir: '   ',
+    })).rejects.toThrow('browser-edge requires sourceDir');
+
+    await expect(adapter.ship(fakeBuildContext({
+      outDir,
+      projectDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      productId: 'edge-product',
+      notes: '   ',
+    })).rejects.toThrow('browser-edge requires notes');
   });
 });

@@ -8,8 +8,29 @@ interface Config {
   notes?: string;            // release notes for reviewer
 }
 
+function requireText(value: string | undefined, name: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`browser-edge requires ${name}`);
+  }
+  return value.trim();
+}
+
+function optionalText(value: string | undefined, name: string): string | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = requireText(value, name);
+  return trimmed;
+}
+
+function requireProductId(value: string | undefined): string {
+  const productId = requireText(value, 'productId');
+  if (/[\\/?#\x00-\x1F\x7F]/.test(productId)) {
+    throw new Error('browser-edge productId must be a single URL path segment');
+  }
+  return productId;
+}
+
 function sourceDir(ctx: { projectDir: string }, config: Config): string {
-  const dir = config.sourceDir ?? 'dist';
+  const dir = optionalText(config.sourceDir, 'sourceDir') ?? 'dist';
   return isAbsolute(dir) ? dir : join(ctx.projectDir, dir);
 }
 
@@ -21,15 +42,16 @@ function safeFileStem(value: string): string {
 }
 
 function packageArtifact(ctx: { outDir: string; version: string }, config: Config): string {
-  return join(ctx.outDir, `${safeFileStem(config.productId)}-${safeFileStem(ctx.version)}.zip`);
+  return join(ctx.outDir, `${safeFileStem(requireProductId(config.productId))}-${safeFileStem(ctx.version)}.zip`);
 }
 
 function packagePlan(ctx: { projectDir: string; outDir: string; version: string }, config: Config) {
+  const productId = requireProductId(config.productId);
   const src = sourceDir(ctx, config);
   const artifact = packageArtifact(ctx, config);
   return {
     provider: 'microsoft-edge-addons',
-    productId: config.productId,
+    productId,
     version: ctx.version,
     sourceDir: src,
     artifact,
@@ -43,10 +65,11 @@ export default defineTarget<Config>({
   kind: 'browser-ext',
   label: 'Microsoft Edge Add-ons',
   async build(ctx, config) {
+    const productId = requireProductId(config.productId);
     const src = sourceDir(ctx, config);
     const zipPath = packageArtifact(ctx, config);
 
-    ctx.log(`pack Edge extension from ${src} for v${ctx.version}`);
+    ctx.log(`pack Edge extension ${productId} from ${src} for v${ctx.version}`);
 
     if (ctx.dryRun) {
       const planPath = join(ctx.outDir, 'edge-package.json');
@@ -79,9 +102,12 @@ export default defineTarget<Config>({
     return { artifact: zipPath };
   },
   async ship(ctx, config) {
-    ctx.log(`upload ${config.productId} to Edge Partner Center (v${ctx.version})`);
+    const productId = requireProductId(config.productId);
+    const notes = optionalText(config.notes, 'notes');
+
+    ctx.log(`upload ${productId} to Edge Partner Center (v${ctx.version})`);
     if (ctx.dryRun) {
-      return { id: `${config.productId}@${ctx.version}`, url: `https://microsoftedge.microsoft.com/addons/detail/${config.productId}` };
+      return { id: `${productId}@${ctx.version}`, url: `https://microsoftedge.microsoft.com/addons/detail/${productId}` };
     }
 
     // Fetch secrets for Edge Publish API OAuth
@@ -119,7 +145,7 @@ export default defineTarget<Config>({
 
     // Step 2: Upload the package (zip) as a draft submission
     ctx.log('uploading package...');
-    const uploadUrl = `https://api.addons.microsoftedge.microsoft.com/v1/products/${config.productId}/submissions/draft/package`;
+    const uploadUrl = `https://api.addons.microsoftedge.microsoft.com/v1/products/${productId}/submissions/draft/package`;
     const zipBuf = await readFile(ctx.artifact);
 
     const uploadRes = await fetch(uploadUrl, {
@@ -141,8 +167,7 @@ export default defineTarget<Config>({
 
     // Step 3: Submit the draft for review
     ctx.log('submitting for review...');
-    const submitUrl = `https://api.addons.microsoftedge.microsoft.com/v1/products/${config.productId}/submissions`;
-    const notes = config.notes;
+    const submitUrl = `https://api.addons.microsoftedge.microsoft.com/v1/products/${productId}/submissions`;
     const submitBody: Record<string, unknown> = {};
     if (notes) { submitBody.notes = notes; }
 
@@ -164,8 +189,8 @@ export default defineTarget<Config>({
     ctx.log('✓ submitted to Edge Partner Center');
 
     return {
-      id: `${config.productId}@${ctx.version}`,
-      url: `https://microsoftedge.microsoft.com/addons/detail/${config.productId}`,
+      id: `${productId}@${ctx.version}`,
+      url: `https://microsoftedge.microsoft.com/addons/detail/${productId}`,
       meta: { submissionId: submitData.id },
     };
   },
