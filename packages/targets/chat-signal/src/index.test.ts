@@ -1,4 +1,4 @@
-import { contractTestTarget, fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { contractTestTarget, fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -37,5 +37,25 @@ describe('Signal target planning', () => {
       deviceName: 'sh1pt-test',
       captchaTokenPresent: true,
     });
+  });
+
+  it('rejects non-E.164 phone numbers before writing runtime plans', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-signal-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({ outDir }) as any, {
+      ...sampleConfig,
+      phoneNumber: '415-555-1234',
+    })).rejects.toThrow('E.164');
+  });
+
+  it('rejects unsupported runtimes before dry-run shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      ...sampleConfig,
+      runtime: 'signal-web',
+    } as any)).rejects.toThrow('runtime must be one of');
   });
 });

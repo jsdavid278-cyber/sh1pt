@@ -19,31 +19,53 @@ interface Config {
   deviceName?: string;
 }
 
+const RUNTIMES = ['signal-cli', 'signald'] as const;
+
+function requirePhoneNumber(config: Config): string {
+  const phoneNumber = config.phoneNumber?.trim();
+  if (!/^\+[1-9]\d{7,14}$/.test(phoneNumber)) {
+    throw new Error('chat-signal phoneNumber must be an E.164 number such as +14155551234');
+  }
+  return phoneNumber;
+}
+
+function requireRuntime(config: Config): Config['runtime'] {
+  const runtime = String(config.runtime ?? '').trim();
+  if (!RUNTIMES.includes(runtime as Config['runtime'])) {
+    throw new Error(`chat-signal runtime must be one of: ${RUNTIMES.join(', ')}`);
+  }
+  return runtime as Config['runtime'];
+}
+
 export default defineTarget<Config>({
   id: 'chat-signal',
   kind: 'chat',
   label: 'Signal (signal-cli / signald)',
   async build(ctx, config) {
-    ctx.log(`prepare ${config.runtime} config for ${config.phoneNumber}`);
+    const phoneNumber = requirePhoneNumber(config);
+    const runtime = requireRuntime(config);
+    ctx.log(`prepare ${runtime} config for ${phoneNumber}`);
     const artifactDir = join(ctx.outDir, 'signal-runtime');
     const planPath = join(artifactDir, 'signal-runtime-plan.json');
     await mkdir(artifactDir, { recursive: true });
     await writeFile(planPath, `${JSON.stringify({
-      phoneNumber: config.phoneNumber,
-      runtime: config.runtime,
+      phoneNumber,
+      runtime,
       deviceName: config.deviceName,
       captchaTokenPresent: !!config.captchaToken,
     }, null, 2)}\n`, 'utf-8');
     return { artifact: planPath };
   },
   async ship(ctx, config) {
-    ctx.log(`register Signal number ${config.phoneNumber} (${config.runtime})`);
+    const phoneNumber = requirePhoneNumber(config);
+    const runtime = requireRuntime(config);
+    ctx.log(`register Signal number ${phoneNumber} (${runtime})`);
     if (ctx.dryRun) return { id: 'dry-run' };
     // TODO:
     //  - signal-cli register -v <phone> (requires captchaToken)
     //  - verify with SMS/voice code (human step unless using a SIP gateway)
     //  - store runtime secrets (identity keys) in secrets vault
-    return { id: `signal:${config.phoneNumber}@${ctx.version}` };
+    return { id: `signal:${phoneNumber}@${ctx.version}` };
   },
   async status(id) {
     return { state: 'live', version: id };
