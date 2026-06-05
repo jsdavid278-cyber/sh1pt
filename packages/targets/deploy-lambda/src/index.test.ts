@@ -185,4 +185,31 @@ describe('AWS Lambda deployment target', () => {
       functionName: '',
     })).rejects.toThrow('functionName is required');
   });
+
+  it('rejects invalid optional Lambda config before writing a plan', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      functionName: 'my-function',
+      handler: '   ',
+    })).rejects.toThrow('deploy-lambda requires handler');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      functionName: 'my-function',
+      memorySize: 64,
+    })).rejects.toThrow('memorySize must be an integer from 128 to 10240');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      functionName: 'my-function',
+      timeout: 901,
+    })).rejects.toThrow('timeout must be an integer from 1 to 900');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      functionName: 'my-function',
+      layers: ['   '],
+    })).rejects.toThrow('deploy-lambda requires layers[0]');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      functionName: 'my-function',
+      environment: { '1BAD': 'value' },
+    })).rejects.toThrow('environment variable "1BAD" must start with a letter');
+  });
 });

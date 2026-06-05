@@ -24,15 +24,66 @@ function functionName(config: Config): string {
   return fn;
 }
 
+function optionalText(value: string | undefined, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  const text = value.trim();
+  if (!text) throw new Error(`deploy-lambda requires ${field}`);
+  return text;
+}
+
+function optionalInteger(value: number | undefined, field: string, min: number, max: number): number | undefined {
+  if (value === undefined) return undefined;
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`deploy-lambda ${field} must be an integer from ${min} to ${max}`);
+  }
+  return value;
+}
+
+function environmentVariables(value: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (value === undefined) return undefined;
+  const entries = Object.entries(value);
+  for (const [key, entryValue] of entries) {
+    if (!/^[A-Za-z][A-Za-z0-9_]+$/.test(key)) {
+      throw new Error(`deploy-lambda environment variable "${key}" must start with a letter and contain only letters, numbers, or underscores`);
+    }
+    if (typeof entryValue !== 'string') {
+      throw new Error(`deploy-lambda environment variable "${key}" must be a string`);
+    }
+  }
+  return value;
+}
+
+function layerArns(value: string[] | undefined): string[] | undefined {
+  return value?.map((layer, index) => optionalText(layer, `layers[${index}]`)!);
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    functionName: functionName(config),
+    handler: optionalText(config.handler, 'handler'),
+    runtime: optionalText(config.runtime, 'runtime'),
+    role: optionalText(config.role, 'role'),
+    zipFile: optionalText(config.zipFile, 'zipFile'),
+    region: optionalText(config.region, 'region'),
+    description: optionalText(config.description, 'description'),
+    environment: environmentVariables(config.environment),
+    layers: layerArns(config.layers),
+    memorySize: optionalInteger(config.memorySize, 'memorySize', 128, 10240),
+    timeout: optionalInteger(config.timeout, 'timeout', 1, 900),
+  };
+}
+
 function region(ctx: { secret(key: string): string | undefined }, config: Config): string {
-  return config.region ?? ctx.secret('AWS_REGION') ?? 'us-east-1';
+  return optionalText(config.region, 'region') ?? optionalText(ctx.secret('AWS_REGION'), 'AWS_REGION') ?? 'us-east-1';
 }
 
 function zipFile(ctx: { outDir: string }, config: Config): string {
-  return config.zipFile ?? join(ctx.outDir, 'function.zip');
+  return optionalText(config.zipFile, 'zipFile') ?? join(ctx.outDir, 'function.zip');
 }
 
 function applyOptionalCreateArgs(args: string[], config: Config): string[] {
+  config = normalizedConfig(config);
   if (config.description) args.push('--description', config.description);
   if (config.timeout !== undefined) args.push('--timeout', String(config.timeout));
   if (config.memorySize !== undefined) args.push('--memory-size', String(config.memorySize));
@@ -45,6 +96,7 @@ function applyOptionalCreateArgs(args: string[], config: Config): string[] {
 }
 
 function updateArgs(config: Config, artifact: string, awsRegion: string): string[] {
+  config = normalizedConfig(config);
   const args = [
     'lambda',
     'update-function-code',
@@ -60,6 +112,7 @@ function updateArgs(config: Config, artifact: string, awsRegion: string): string
 }
 
 function createArgs(config: Config, artifact: string, awsRegion: string, role: string): string[] {
+  config = normalizedConfig(config);
   return applyOptionalCreateArgs([
     'lambda',
     'create-function',
@@ -82,6 +135,7 @@ function renderPlan(
   ctx: { outDir: string; version: string; secret(key: string): string | undefined },
   config: Config
 ): string {
+  config = normalizedConfig(config);
   const artifact = zipFile(ctx, config);
   const awsRegion = region(ctx, config);
   const plannedRole = config.role ?? '<AWS_LAMBDA_ROLE>';
@@ -132,6 +186,7 @@ export default defineTarget<Config>({
   label: 'AWS Lambda',
 
   async build(ctx, config) {
+    config = normalizedConfig(config);
     const fn = functionName(config);
     const planPath = join(ctx.outDir, 'lambda-deploy.json');
     ctx.log(`lambda plan - function=${fn} region=${region(ctx, config)}`);
@@ -141,6 +196,7 @@ export default defineTarget<Config>({
   },
 
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     const fn = functionName(config);
     const awsRegion = region(ctx, config);
     const artifact = zipFile(ctx, config);
