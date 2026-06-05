@@ -57,6 +57,35 @@ function b64url(buf: Buffer | string): string {
   return b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+function requireValue(value: string | undefined, field: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) throw new Error(`browser-safari requires ${field}`);
+  return trimmed;
+}
+
+function optionalValue(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireValue(value, field);
+}
+
+function bundleId(value: string | undefined): string {
+  const id = requireValue(value, 'bundleId');
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]*(\.[A-Za-z0-9][A-Za-z0-9-]*)+$/.test(id)) {
+    throw new Error('browser-safari bundleId must look like a reverse-DNS identifier');
+  }
+  return id;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    bundleId: bundleId(config.bundleId),
+    appleId: optionalValue(config.appleId, 'appleId'),
+    teamId: optionalValue(config.teamId, 'teamId'),
+    scheme: optionalValue(config.scheme, 'scheme') ?? 'App',
+    projectDir: optionalValue(config.projectDir, 'projectDir') ?? '.',
+  };
+}
+
 function safeFileStem(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'safari-extension';
 }
@@ -81,6 +110,7 @@ function buildPlan(
   ctx: { projectDir: string; outDir: string; version: string },
   config: Config,
 ): SafariPackagePlan {
+  config = normalizedConfig(config);
   const projectDir = resolveLike(ctx.projectDir, config.projectDir ?? '.');
   const scheme = config.scheme ?? 'App';
   const archivePath = joinLike(ctx.outDir, `${safeFileStem(config.bundleId)}-${safeFileStem(ctx.version)}.xcarchive`);
@@ -133,9 +163,9 @@ export default defineTarget<Config>({
   label: 'App Store (Safari ext.)',
   async build(ctx, config) {
     const plan = buildPlan(ctx, config);
-    const artifact = planPath(ctx.outDir, config.bundleId, ctx.version);
+    const artifact = planPath(ctx.outDir, plan.bundleId, ctx.version);
 
-    ctx.log(`build Safari Web Extension for ${config.bundleId} v${ctx.version}`);
+    ctx.log(`build Safari Web Extension for ${plan.bundleId} v${ctx.version}`);
     await mkdir(ctx.outDir, { recursive: true });
 
     if (ctx.dryRun) {
@@ -172,6 +202,7 @@ export default defineTarget<Config>({
     return { artifact: plan.archivePath };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     ctx.log(`upload ${config.bundleId} to App Store Connect v${ctx.version}`);
     if (ctx.dryRun) {
       return { id: `${config.bundleId}@${ctx.version}`, url: `https://apps.apple.com/app/${config.bundleId}` };
