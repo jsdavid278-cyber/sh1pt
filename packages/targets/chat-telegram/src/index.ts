@@ -32,11 +32,14 @@ export default defineTarget<Config>({
   label: 'Telegram Bot',
   async build(ctx, config) {
     const username = normalizeUsername(config.botUsername);
+    requireWebhookUrl(config.webhookUrl);
     ctx.log(`telegram prepare bot manifest for @${username}`);
     return { artifact: join(ctx.outDir, `telegram-${safeFilename(username)}.json`) };
   },
   async ship(ctx, config) {
     const username = normalizeUsername(config.botUsername);
+    const webhookUrl = requireWebhookUrl(config.webhookUrl);
+    const commands = config.commands?.map(normalizeCommand) ?? [];
     ctx.log(`telegram setWebhook + setMyCommands for @${username}`);
     if (ctx.dryRun) return { id: 'dry-run' };
 
@@ -45,13 +48,13 @@ export default defineTarget<Config>({
     if (!token) throw new Error(`${tokenKey} not in vault - run: sh1pt secret set ${tokenKey} <bot-token>`);
 
     await callTelegram(ctx.log, token, 'setWebhook', {
-      url: config.webhookUrl,
+      url: webhookUrl,
       ...(config.webhookSecretKey ? { secret_token: requireSecret(ctx, config.webhookSecretKey) } : {}),
     });
 
-    if (config.commands?.length) {
+    if (commands.length) {
       await callTelegram(ctx.log, token, 'setMyCommands', {
-        commands: config.commands.map(normalizeCommand),
+        commands,
       });
     }
 
@@ -106,14 +109,33 @@ function normalizeUsername(username: string): string {
   return clean;
 }
 
+function requireWebhookUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('chat-telegram webhookUrl must be a valid HTTPS URL');
+  }
+  if (url.protocol !== 'https:' || !url.hostname) {
+    throw new Error('chat-telegram webhookUrl must be a valid HTTPS URL');
+  }
+  return url.toString();
+}
+
 function safeFilename(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 function normalizeCommand(command: TelegramCommand): TelegramCommand {
+  const name = command.command.replace(/^\//, '').trim().toLowerCase();
+  if (!/^[a-z0-9_]{1,32}$/.test(name)) {
+    throw new Error('chat-telegram command must be 1-32 lowercase letters, digits, or underscores');
+  }
+  const description = command.description.trim();
+  if (!description) throw new Error(`chat-telegram command "${name}" requires description`);
   return {
-    command: command.command.replace(/^\//, ''),
-    description: command.description,
+    command: name,
+    description,
   };
 }
 

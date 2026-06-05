@@ -72,11 +72,40 @@ describe('chat-telegram API calls', () => {
     })).rejects.toThrow('TELEGRAM_BOT_TOKEN not in vault');
   });
 
+  it('rejects invalid webhook URLs before writing dry-run artifacts', async () => {
+    const ctx = fakeBuildContext({ outDir: '/tmp/sh1pt-out' });
+
+    await expect(adapter.build(ctx as any, {
+      botUsername: 'demo_bot',
+      webhookUrl: 'http://example.com/telegram',
+    })).rejects.toThrow('webhookUrl must be a valid HTTPS URL');
+  });
+
+  it('rejects invalid commands before dry-run shipping', async () => {
+    const ctx = fakeShipContext({ dryRun: true });
+
+    await expect(adapter.ship(ctx as any, {
+      botUsername: 'demo_bot',
+      webhookUrl: 'https://example.com/telegram',
+      commands: [{ command: '/bad command', description: 'Bad command' }],
+    })).rejects.toThrow('command must be 1-32 lowercase letters');
+  });
+
+  it('rejects empty command descriptions before dry-run shipping', async () => {
+    const ctx = fakeShipContext({ dryRun: true });
+
+    await expect(adapter.ship(ctx as any, {
+      botUsername: 'demo_bot',
+      webhookUrl: 'https://example.com/telegram',
+      commands: [{ command: '/start', description: ' ' }],
+    })).rejects.toThrow('requires description');
+  });
+
   it('surfaces Telegram API errors', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 400,
-      json: async () => ({ ok: false, description: 'Bad Request: invalid webhook url' }),
+      json: async () => ({ ok: false, description: 'Bad Request: webhook host not reachable' }),
     } as any);
 
     const ctx = fakeShipContext({
@@ -86,7 +115,7 @@ describe('chat-telegram API calls', () => {
 
     await expect(adapter.ship(ctx as any, {
       botUsername: 'demo_bot',
-      webhookUrl: 'not-a-url',
-    })).rejects.toThrow('Bad Request: invalid webhook url');
+      webhookUrl: 'https://example.com/telegram',
+    })).rejects.toThrow('Bad Request: webhook host not reachable');
   });
 });
