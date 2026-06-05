@@ -61,6 +61,16 @@ function safeFileStem(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'safari-extension';
 }
 
+const BUNDLE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$/;
+
+function requireBundleId(config: Config): string {
+  const bundleId = config.bundleId.trim();
+  if (!BUNDLE_ID_PATTERN.test(bundleId)) {
+    throw new Error('Safari bundleId must be a reverse-DNS identifier such as com.example.MyExtension');
+  }
+  return bundleId;
+}
+
 function planPath(outDir: string, bundleId: string, version: string): string {
   return joinLike(outDir, `${safeFileStem(bundleId)}-${safeFileStem(version)}.safari-plan.json`);
 }
@@ -81,12 +91,13 @@ function buildPlan(
   ctx: { projectDir: string; outDir: string; version: string },
   config: Config,
 ): SafariPackagePlan {
+  const bundleId = requireBundleId(config);
   const projectDir = resolveLike(ctx.projectDir, config.projectDir ?? '.');
   const scheme = config.scheme ?? 'App';
-  const archivePath = joinLike(ctx.outDir, `${safeFileStem(config.bundleId)}-${safeFileStem(ctx.version)}.xcarchive`);
+  const archivePath = joinLike(ctx.outDir, `${safeFileStem(bundleId)}-${safeFileStem(ctx.version)}.xcarchive`);
   const xcodeProj = joinLike(projectDir, `${scheme}.xcodeproj`);
   const xcWorkspace = joinLike(projectDir, `${scheme}.xcworkspace`);
-  const appName = config.bundleId.split('.').pop() ?? 'Extension';
+  const appName = bundleId.split('.').pop() ?? 'Extension';
   const archiveArgs = [
     existsSync(xcWorkspace) ? '-workspace' : '-project',
     existsSync(xcWorkspace) ? xcWorkspace : xcodeProj,
@@ -100,7 +111,7 @@ function buildPlan(
   ];
 
   return {
-    bundleId: config.bundleId,
+    bundleId,
     version: ctx.version,
     projectDir,
     scheme,
@@ -113,7 +124,7 @@ function buildPlan(
         '--app-name',
         appName,
         '--bundle-identifier',
-        config.bundleId,
+        bundleId,
         '--force',
         '--no-open',
       ],
@@ -133,9 +144,9 @@ export default defineTarget<Config>({
   label: 'App Store (Safari ext.)',
   async build(ctx, config) {
     const plan = buildPlan(ctx, config);
-    const artifact = planPath(ctx.outDir, config.bundleId, ctx.version);
+    const artifact = planPath(ctx.outDir, plan.bundleId, ctx.version);
 
-    ctx.log(`build Safari Web Extension for ${config.bundleId} v${ctx.version}`);
+    ctx.log(`build Safari Web Extension for ${plan.bundleId} v${ctx.version}`);
     await mkdir(ctx.outDir, { recursive: true });
 
     if (ctx.dryRun) {
@@ -172,9 +183,10 @@ export default defineTarget<Config>({
     return { artifact: plan.archivePath };
   },
   async ship(ctx, config) {
-    ctx.log(`upload ${config.bundleId} to App Store Connect v${ctx.version}`);
+    const bundleId = requireBundleId(config);
+    ctx.log(`upload ${bundleId} to App Store Connect v${ctx.version}`);
     if (ctx.dryRun) {
-      return { id: `${config.bundleId}@${ctx.version}`, url: `https://apps.apple.com/app/${config.bundleId}` };
+      return { id: `${bundleId}@${ctx.version}`, url: `https://apps.apple.com/app/${bundleId}` };
     }
 
     // Fetch App Store Connect API credentials from secrets
@@ -197,7 +209,7 @@ export default defineTarget<Config>({
 
     // Step 1: Find the app in App Store Connect
     ctx.log('looking up app in App Store Connect...');
-    const searchUrl = `${apiBase}/apps?filter[bundleId]=${encodeURIComponent(config.bundleId)}`;
+    const searchUrl = `${apiBase}/apps?filter[bundleId]=${encodeURIComponent(bundleId)}`;
     const searchRes = await fetch(searchUrl, { headers: authHeaders });
 
     if (!searchRes.ok) {
@@ -206,7 +218,7 @@ export default defineTarget<Config>({
     const searchData = (await searchRes.json()) as { data?: Array<{ id: string; attributes: { name: string } }> };
     const app = searchData.data?.[0];
     if (!app) {
-      throw new Error(`No app found for bundle ID ${config.bundleId} — create the app record in App Store Connect first`);
+      throw new Error(`No app found for bundle ID ${bundleId} — create the app record in App Store Connect first`);
     }
     ctx.log(`✓ found app: ${app.attributes.name} (${app.id})`);
 
@@ -258,8 +270,8 @@ export default defineTarget<Config>({
     ctx.log('✓ build uploaded to App Store Connect');
 
     return {
-      id: `${config.bundleId}@${ctx.version}`,
-      url: `https://apps.apple.com/app/${config.bundleId}`,
+      id: `${bundleId}@${ctx.version}`,
+      url: `https://apps.apple.com/app/${bundleId}`,
     };
   },
   async status(id) {

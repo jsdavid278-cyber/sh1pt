@@ -57,4 +57,29 @@ describe('Safari extension build planning', () => {
     expect(plan.archive.args).toContain('-archivePath');
     expect(plan.archive.args).toContain('generic/platform=macos');
   });
+
+  it('rejects invalid bundle IDs before writing dry-run package plans', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-safari-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      projectDir: '/tmp/source-project',
+      outDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      bundleId: 'com.acme/MyExtension',
+    })).rejects.toThrow(/reverse-DNS/);
+  });
+
+  it('rejects invalid bundle IDs before dry-run shipping', async () => {
+    await expect(adapter.ship(fakeBuildContext({
+      projectDir: '/tmp/source-project',
+      outDir: '/tmp/out',
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      bundleId: 'MyExtension',
+    })).rejects.toThrow(/reverse-DNS/);
+  });
 });
