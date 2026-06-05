@@ -1,4 +1,4 @@
-import { fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -105,5 +105,32 @@ describe('browser-firefox target adapter', () => {
       throwOnNonZero: true,
     });
     expect(result).toEqual({ artifact });
+  });
+
+  it('rejects unsupported channels while planning dry-run builds', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-firefox-out-'));
+    const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-firefox-project-'));
+    tempDirs.push(outDir, projectDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      projectDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      extensionId: 'myext@example.com',
+      channel: 'preview',
+    } as any)).rejects.toThrow('browser-firefox channel must be one of: listed, unlisted');
+    expect(execMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects unsupported channels while shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      extensionId: 'myext@example.com',
+      channel: 'preview',
+    } as any)).rejects.toThrow('browser-firefox channel must be one of: listed, unlisted');
   });
 });

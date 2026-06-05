@@ -8,6 +8,8 @@ interface Config {
   channel?: 'listed' | 'unlisted';
 }
 
+const CHANNELS = ['listed', 'unlisted'] as const;
+
 interface FirefoxPackagePlan {
   provider: 'mozilla-addons';
   extensionId: string;
@@ -39,19 +41,28 @@ function artifactPath(ctx: { outDir: string; version: string }, config: Config):
   return join(ctx.outDir, artifactName(ctx, config));
 }
 
+function channel(config: Config): NonNullable<Config['channel']> {
+  const selectedChannel = config.channel ?? 'listed';
+  if (CHANNELS.includes(selectedChannel as (typeof CHANNELS)[number])) {
+    return selectedChannel as NonNullable<Config['channel']>;
+  }
+  throw new Error(`browser-firefox channel must be one of: ${CHANNELS.join(', ')}`);
+}
+
 function packagePlan(
   ctx: { projectDir: string; outDir: string; version: string },
   config: Config,
 ): FirefoxPackagePlan {
   const src = sourceDir(ctx, config);
   const filename = artifactName(ctx, config);
+  const selectedChannel = channel(config);
   return {
     provider: 'mozilla-addons',
     extensionId: config.extensionId,
     version: ctx.version,
     sourceDir: src,
     artifact: join(ctx.outDir, filename),
-    channel: config.channel ?? 'listed',
+    channel: selectedChannel,
     build: {
       command: 'web-ext',
       args: ['build', '--source-dir', src, '--artifacts-dir', ctx.outDir, '--filename', filename],
@@ -101,11 +112,11 @@ export default defineTarget<Config>({
     return { artifact: artifactPath(ctx, config) };
   },
   async ship(ctx, config) {
-    const channel = config.channel ?? 'listed';
-    ctx.log(`sign + submit ${config.extensionId} to AMO (channel: ${channel})`);
+    const selectedChannel = channel(config);
+    ctx.log(`sign + submit ${config.extensionId} to AMO (channel: ${selectedChannel})`);
     if (ctx.dryRun) return { id: 'dry-run' };
     // TODO: web-ext sign --api-key=${AMO_JWT_ISSUER} --api-secret=${AMO_JWT_SECRET}
-    //       --channel=${channel} --source-dir ${config.sourceDir ?? 'dist/'}
+    //       --channel=${selectedChannel} --source-dir ${config.sourceDir ?? 'dist/'}
     // Or: POST https://addons.mozilla.org/api/v5/addons/<id>/versions/ with JWT auth
     return {
       id: `${config.extensionId}@${ctx.version}`,
