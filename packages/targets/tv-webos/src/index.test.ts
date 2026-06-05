@@ -121,4 +121,50 @@ describe('webOS TV target', () => {
       submission: 'developer-mode',
     })).rejects.toThrow('webOS appinfo.json id must match appId');
   });
+
+  it('rejects app ids with path separators before writing the plan', async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-webos-project-'));
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-webos-out-'));
+    tempDirs.push(projectDir, outDir);
+    await mkdir(join(projectDir, 'webos'), { recursive: true });
+    await writeFile(join(projectDir, 'webos', 'index.html'), '<main></main>\n', 'utf-8');
+    await writeFile(join(projectDir, 'webos', 'appinfo.json'), JSON.stringify({
+      id: '../com.acme.tv',
+      version: '1.2.3',
+      title: 'Acme TV',
+      main: 'index.html',
+    }), 'utf-8');
+
+    await expect(adapter.build(fakeBuildContext({
+      projectDir,
+      outDir,
+    }) as any, {
+      appId: '../com.acme.tv',
+      sourceDir: 'webos',
+      submission: 'developer-mode',
+    })).rejects.toThrow('appId');
+  });
+
+  it('rejects package versions with path separators', async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-webos-project-'));
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-webos-out-'));
+    tempDirs.push(projectDir, outDir);
+    await mkdir(join(projectDir, 'webos'), { recursive: true });
+    await writeFile(join(projectDir, 'webos', 'index.html'), '<main></main>\n', 'utf-8');
+    await writeFile(join(projectDir, 'webos', 'appinfo.json'), JSON.stringify({
+      id: 'com.acme.tv',
+      version: '../1.2.3',
+      title: 'Acme TV',
+      main: 'index.html',
+    }), 'utf-8');
+
+    await expect(adapter.build(fakeBuildContext({
+      projectDir,
+      outDir,
+    }) as any, {
+      appId: 'com.acme.tv',
+      sourceDir: 'webos',
+      submission: 'developer-mode',
+    })).rejects.toThrow('appinfo.version');
+  });
 });
