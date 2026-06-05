@@ -27,10 +27,22 @@ interface DiscordCommand {
   options?: unknown[];
 }
 
+const DISTRIBUTIONS = ['private', 'public', 'directory'] as const;
+const SCOPES = ['bot', 'applications.commands'] as const;
+
 function requireApplicationId(config: Config): string {
   const applicationId = config.applicationId?.trim();
   if (!applicationId) throw new Error('chat-discord requires applicationId');
+  if (!/^\d+$/.test(applicationId)) throw new Error('chat-discord applicationId must be a numeric Discord snowflake');
   return applicationId;
+}
+
+function requireDistribution(config: Config): Config['distribution'] {
+  const distribution = String(config.distribution ?? '').trim();
+  if (!DISTRIBUTIONS.includes(distribution as Config['distribution'])) {
+    throw new Error(`chat-discord distribution must be one of: ${DISTRIBUTIONS.join(', ')}`);
+  }
+  return distribution as Config['distribution'];
 }
 
 function normalizeCommands(commands: Config['slashCommands']): DiscordCommand[] {
@@ -49,7 +61,10 @@ function normalizeCommands(commands: Config['slashCommands']): DiscordCommand[] 
 }
 
 function scopesFor(config: Config): string[] {
-  return config.scopes?.length ? config.scopes : ['bot', 'applications.commands'];
+  const scopes = config.scopes?.length ? config.scopes : ['bot', 'applications.commands'];
+  const invalid = scopes.find((scope) => !SCOPES.includes(scope as typeof SCOPES[number]));
+  if (invalid) throw new Error(`chat-discord scope must be one of: ${SCOPES.join(', ')}`);
+  return scopes;
 }
 
 function inviteUrl(config: Config): string {
@@ -63,17 +78,18 @@ function inviteUrl(config: Config): string {
 
 function manifestFor(config: Config, version: string) {
   const commands = normalizeCommands(config.slashCommands);
+  const distribution = requireDistribution(config);
   return {
     provider: 'discord',
     applicationId: requireApplicationId(config),
     version,
-    distribution: config.distribution,
+    distribution,
     interactionsEndpointUrl: config.interactionsEndpointUrl,
     scopes: scopesFor(config),
     permissions: config.permissions ?? 0,
     inviteUrl: inviteUrl(config),
     commands,
-    directoryReviewRequired: config.distribution === 'directory',
+    directoryReviewRequired: distribution === 'directory',
   };
 }
 

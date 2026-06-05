@@ -92,6 +92,40 @@ describe('Discord chat target', () => {
     })).rejects.toThrow('DISCORD_APP_TOKEN not in vault');
   });
 
+  it('rejects non-numeric application IDs before writing manifests', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-discord-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '1.2.3',
+    }) as any, {
+      applicationId: 'abc-123',
+      distribution: 'public',
+    })).rejects.toThrow('numeric Discord snowflake');
+  });
+
+  it('rejects unsupported distributions in dry-run shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      applicationId: '123456',
+      distribution: 'server-listing',
+    } as any)).rejects.toThrow('distribution must be one of');
+  });
+
+  it('rejects unsupported OAuth scopes in dry-run shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      applicationId: '123456',
+      distribution: 'public',
+      scopes: ['identify'],
+    } as any)).rejects.toThrow('scope must be one of');
+  });
+
   it('patches the application and overwrites global slash commands', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, status: 200, text: async () => '{"id":"123456"}' })
