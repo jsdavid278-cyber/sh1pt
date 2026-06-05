@@ -65,6 +65,24 @@ describe('Vercel deployment target', () => {
     });
   });
 
+  it('rejects invalid Vercel config before plan or CLI work', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      dir: '   ',
+    })).rejects.toThrow('deploy-vercel requires dir');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      project: 'bad/project',
+    })).rejects.toThrow('project must contain only letters');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      org: 'bad org',
+    })).rejects.toThrow('org must contain only letters');
+  });
+
   it('requires a vault token for real deployments', async () => {
     await expect(adapter.ship(fakeShipContext({
       dryRun: false,
