@@ -6,6 +6,33 @@ interface Config {
   description?: string;
 }
 
+function requireText(value: unknown, name: string): string {
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} required`);
+  return value.trim();
+}
+
+function requirePositiveAmount(value: unknown): number {
+  const amount = value ?? 100;
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+    throw new Error('amount must be a positive number');
+  }
+  return amount;
+}
+
+function requireCurrency(value: unknown): string {
+  const currency = typeof value === 'string' ? value.trim().toUpperCase() : 'USD';
+  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('currency must be a three-letter ISO code');
+  return currency;
+}
+
+function requirePositiveInteger(value: unknown, name: string): number {
+  const numberValue = value ?? 10;
+  if (typeof numberValue !== 'number' || !Number.isInteger(numberValue) || numberValue <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return numberValue;
+}
+
 export default defineTarget<Config>({
   id: 'payment-paypal',
   kind: 'payment',
@@ -38,33 +65,30 @@ export default defineTarget<Config>({
     if (ctx.dryRun) return { id: 'dry-run', meta: { command: cmd } };
     switch (cmd) {
       case 'create': {
-        const amount = config.args?.amount ?? 100;
-        const currency = (config.args?.currency as string) ?? 'USD';
+        const amount = requirePositiveAmount(config.args?.amount);
+        const currency = requireCurrency(config.args?.currency);
         const args = ['orders', 'create', '--amount', String(amount), '--currency', currency];
         if (config.description) args.push('--description', config.description);
         const { stdout } = await exec('paypal', args, { log: ctx.log, throwOnNonZero: true });
         return { id: `order_${Date.now()}`, meta: { raw: stdout.trim() } };
       }
       case 'get': {
-        const orderId = config.args?.orderId as string;
-        if (!orderId) throw new Error('orderId required');
+        const orderId = requireText(config.args?.orderId, 'orderId');
         const { stdout } = await exec('paypal', ['orders', 'get', orderId], { log: ctx.log });
         return { id: orderId, meta: { raw: stdout.trim() } };
       }
       case 'list': {
-        const limit = config.args?.limit ?? 10;
+        const limit = requirePositiveInteger(config.args?.limit, 'limit');
         const { stdout } = await exec('paypal', ['orders', 'list', `--limit=${limit}`], { log: ctx.log });
         return { id: `list-${Date.now()}`, meta: { raw: stdout.trim() } };
       }
       case 'capture': {
-        const orderId = config.args?.orderId as string;
-        if (!orderId) throw new Error('orderId required');
+        const orderId = requireText(config.args?.orderId, 'orderId');
         const { stdout } = await exec('paypal', ['orders', 'capture', orderId], { log: ctx.log });
         return { id: `capture_${Date.now()}`, meta: { raw: stdout.trim() } };
       }
       case 'refund': {
-        const captureId = config.args?.captureId as string;
-        if (!captureId) throw new Error('captureId required');
+        const captureId = requireText(config.args?.captureId, 'captureId');
         const { stdout } = await exec('paypal', ['refunds', 'create', captureId], { log: ctx.log });
         return { id: `refund_${Date.now()}`, meta: { raw: stdout.trim() } };
       }
