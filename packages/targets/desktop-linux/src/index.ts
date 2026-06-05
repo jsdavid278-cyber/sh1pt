@@ -16,18 +16,30 @@ interface Config {
   direct?: { host: 'github-releases' | 'cdn'; project?: string };
 }
 
+const APP_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$/;
+
+function requireAppId(config: Config): string {
+  const appId = config.appId?.trim();
+  if (!appId) throw new Error('desktop-linux requires appId');
+  if (!APP_ID_PATTERN.test(appId)) {
+    throw new Error('desktop-linux appId must be a valid reverse-DNS identifier');
+  }
+  return appId;
+}
+
 export default defineTarget<Config>({
   id: 'desktop-linux',
   kind: 'desktop',
   label: 'Linux (AppImage / Snap / Flatpak / deb / rpm)',
   async build(ctx, config) {
+    const appId = requireAppId(config);
     const arches = config.architectures ?? ['x64', 'arm64'];
     ctx.log(`build ${config.formats.join(',')} · arches=${arches.join(',')}`);
     const artifactDir = join(ctx.outDir, 'linux');
     const planPath = join(artifactDir, 'linux-package-plan.json');
     await mkdir(artifactDir, { recursive: true });
     await writeFile(planPath, `${JSON.stringify({
-      appId: config.appId,
+      appId,
       version: ctx.version,
       channel: ctx.channel,
       formats: config.formats,
@@ -41,6 +53,7 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    const appId = requireAppId(config);
     const channels = config.formats
       .map((f) => {
         if (f === 'snap') return `Snapcraft:${config.snap?.channel ?? 'stable'}`;
@@ -57,7 +70,7 @@ export default defineTarget<Config>({
     //  - flatpak:  open PR against flathub repo (like pkg-homebrew pattern)
     //  - appimage: upload to GitHub release or CDN + refresh update.json
     //  - deb/rpm:  aptly / createrepo + sign + push to configured repo
-    return { id: `${config.appId}@${ctx.version}` };
+    return { id: `${appId}@${ctx.version}` };
   },
   async status(id) {
     return { state: 'live', version: id };
