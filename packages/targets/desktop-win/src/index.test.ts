@@ -1,4 +1,4 @@
-import { fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,5 +83,31 @@ describe('Windows desktop package planning', () => {
     const signCommand = plan.commands.find((command) => command.tool === 'signtool');
     expect(signCommand?.needsSigningCert).toBe(true);
     expect(signCommand?.args).toContain('<certificate-thumbprint>');
+  });
+
+  it('rejects unsupported distributions while building', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-desktop-win-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '1.0.0',
+      dryRun: true,
+    }) as any, {
+      appId: 'Acme.Tool',
+      publisherId: 'CN=publisher',
+      distribution: 'preview',
+    } as any)).rejects.toThrow('desktop-win distribution must be one of: msstore, msi, both');
+  });
+
+  it('rejects unsupported distributions while shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.0.0',
+      dryRun: true,
+    }) as any, {
+      appId: 'Acme.Tool',
+      publisherId: 'CN=publisher',
+      distribution: 'preview',
+    } as any)).rejects.toThrow('desktop-win distribution must be one of: msstore, msi, both');
   });
 });

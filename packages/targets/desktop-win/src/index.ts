@@ -12,6 +12,7 @@ interface Config {
 }
 
 type WindowsArtifactKind = 'msixbundle' | 'msi';
+const DISTRIBUTIONS = ['msstore', 'msi', 'both'] as const;
 
 interface WindowsPackagePlan {
   appId: string;
@@ -34,15 +35,23 @@ function safeFileStem(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'windows-app';
 }
 
+function requireDistribution(config: Config): Config['distribution'] {
+  if (DISTRIBUTIONS.includes(config.distribution as Config['distribution'])) {
+    return config.distribution as Config['distribution'];
+  }
+  throw new Error(`desktop-win distribution must be one of: ${DISTRIBUTIONS.join(', ')}`);
+}
+
 function artifactKinds(distribution: Config['distribution']): WindowsArtifactKind[] {
   if (distribution === 'both') return ['msixbundle', 'msi'];
   return [distribution === 'msi' ? 'msi' : 'msixbundle'];
 }
 
 function buildPlan(ctx: { outDir: string; version: string }, config: Config): WindowsPackagePlan {
+  const distribution = requireDistribution(config);
   const architectures = config.architectures ?? ['x64', 'arm64'];
   const baseName = `${safeFileStem(config.appId)}-${safeFileStem(ctx.version)}`;
-  const artifacts = artifactKinds(config.distribution).map((kind) => ({
+  const artifacts = artifactKinds(distribution).map((kind) => ({
     kind,
     path: join(ctx.outDir, 'windows', `${baseName}.${kind}`),
   }));
@@ -92,7 +101,7 @@ function buildPlan(ctx: { outDir: string; version: string }, config: Config): Wi
     appId: config.appId,
     publisherId: config.publisherId,
     version: ctx.version,
-    distribution: config.distribution,
+    distribution,
     architectures,
     artifacts,
     commands,
@@ -121,10 +130,11 @@ export default defineTarget<Config>({
     //  - MSIX: makeappx pack + signtool sign using signingCertThumbprint
     //  - MSI: WiX toolset → .msi → signtool sign
     // Requires Windows runner; cloud builds route to a windows worker.
-    const ext = config.distribution === 'msi' ? 'msi' : 'msixbundle';
+    const ext = plan.distribution === 'msi' ? 'msi' : 'msixbundle';
     return { artifact: `${ctx.outDir}/app.${ext}` };
   },
   async ship(ctx, config) {
+    const distribution = requireDistribution(config);
     ctx.log(`publish ${config.appId}@${ctx.version} · distribution=${config.distribution}`);
     if (ctx.dryRun) return { id: 'dry-run' };
     // TODO:
@@ -132,7 +142,7 @@ export default defineTarget<Config>({
     //  - msi: upload to configured CDN/GitHub release + update winget manifest via pkg-winget
     return {
       id: `${config.appId}@${ctx.version}`,
-      url: config.distribution !== 'msi' ? `https://apps.microsoft.com/detail/${config.appId}` : undefined,
+      url: distribution !== 'msi' ? `https://apps.microsoft.com/detail/${config.appId}` : undefined,
     };
   },
   async status(id) {
