@@ -104,6 +104,46 @@ describe('Cloudflare Workers deployment target', () => {
     expect(execMock).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid Workers config before plan or CLI work', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      name: '   ',
+      accountId: 'account-123',
+    })).rejects.toThrow('deploy-workers requires name');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      name: 'api-worker',
+      accountId: 'account/123',
+    })).rejects.toThrow('accountId must be a single URL-safe segment');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      name: 'api-worker',
+      accountId: 'account-123',
+      routes: ['   '],
+    })).rejects.toThrow('deploy-workers requires routes[0]');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      name: 'api-worker',
+      accountId: 'account-123',
+      compatibilityDate: '20260521',
+    })).rejects.toThrow('compatibilityDate must use YYYY-MM-DD');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      name: 'api-worker',
+      accountId: 'account-123',
+      vars: { 'bad-key': 'value' },
+    })).rejects.toThrow('var "bad-key" must be a valid environment variable name');
+
+    expect(execMock).not.toHaveBeenCalled();
+  });
+
   it('requires a Cloudflare API token for real deployments', async () => {
     await expect(adapter.ship(fakeShipContext({
       dryRun: false,
