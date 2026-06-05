@@ -12,8 +12,53 @@ interface Config {
   publicUrl?: string;
 }
 
+const DISPLAYS = new Set(['fullscreen', 'standalone', 'minimal-ui', 'browser']);
+
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`web-pwa requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function optionalDisplay(value: Config['display']): Config['display'] {
+  if (value === undefined) return undefined;
+  if (!DISPLAYS.has(value)) throw new Error(`web-pwa display "${value}" is not supported`);
+  return value;
+}
+
+function optionalPublicUrl(value: string | undefined): string | undefined {
+  const url = optionalText(value, 'publicUrl');
+  if (!url) return undefined;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('web-pwa publicUrl must be a valid HTTP(S) URL');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('web-pwa publicUrl must use HTTP(S)');
+  return url;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    manifestPath: requireText(config.manifestPath, 'manifestPath'),
+    serviceWorkerPath: optionalText(config.serviceWorkerPath, 'serviceWorkerPath'),
+    startUrl: optionalText(config.startUrl, 'startUrl'),
+    scope: optionalText(config.scope, 'scope'),
+    display: optionalDisplay(config.display),
+    iconsDir: optionalText(config.iconsDir, 'iconsDir'),
+    publicUrl: optionalPublicUrl(config.publicUrl),
+  };
+}
+
 function fromProject(projectDir: string, path: string) {
-  return isAbsolute(path) ? path : resolve(projectDir, path);
+  const safePath = requireText(path, 'path');
+  return isAbsolute(safePath) ? safePath : resolve(projectDir, safePath);
 }
 
 function absoluteUrl(publicUrl: string | undefined, path: string) {
@@ -22,8 +67,8 @@ function absoluteUrl(publicUrl: string | undefined, path: string) {
   return new URL(path, publicUrl.endsWith('/') ? publicUrl : `${publicUrl}/`).toString();
 }
 
-function normalizeWebPath(path: string | undefined, fallback: string) {
-  const value = path ?? fallback;
+function normalizeWebPath(path: string | undefined, fallback: string, field: string) {
+  const value = path === undefined ? fallback : requireText(path, field);
   return value.startsWith('/') || /^https?:\/\//.test(value) ? value : `/${value}`;
 }
 
@@ -32,8 +77,9 @@ export default defineTarget<Config>({
   kind: 'web',
   label: 'Progressive Web App',
   async build(ctx, config) {
-    const startUrl = normalizeWebPath(config.startUrl, '/');
-    const scope = normalizeWebPath(config.scope, startUrl);
+    config = normalizedConfig(config);
+    const startUrl = normalizeWebPath(config.startUrl, '/', 'startUrl');
+    const scope = normalizeWebPath(config.scope, startUrl, 'scope');
     const artifactDir = join(ctx.outDir, 'web-pwa');
     const manifestOut = join(artifactDir, 'manifest.webmanifest');
     const serviceWorkerOut = join(artifactDir, 'service-worker.js');
@@ -128,7 +174,8 @@ self.addEventListener('fetch', (event) => {
     return { artifact: artifactDir };
   },
   async ship(ctx, config) {
-    const startUrl = normalizeWebPath(config.startUrl, '/');
+    config = normalizedConfig(config);
+    const startUrl = normalizeWebPath(config.startUrl, '/', 'startUrl');
     const url = absoluteUrl(config.publicUrl, startUrl);
     ctx.log(`prepare PWA release metadata for ${url ?? startUrl}`);
     if (ctx.dryRun) return { id: 'dry-run', url };
