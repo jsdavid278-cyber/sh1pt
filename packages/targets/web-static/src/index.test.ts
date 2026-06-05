@@ -93,6 +93,31 @@ describe('static web target', () => {
     });
   });
 
+  it('rejects invalid static web metadata before shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      dir: 'dist',
+      provider: 'ftp' as any,
+    })).rejects.toThrow('provider "ftp" is not supported');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      dir: 'dist',
+      provider: 'netlify',
+      project: 'bad/project',
+    })).rejects.toThrow('project must contain only letters');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      dir: 'dist',
+      provider: 'netlify',
+      domain: 'https://docs.example.com',
+    })).rejects.toThrow('domain must be a hostname without protocol or path');
+  });
+
   it('requires an existing source directory', async () => {
     const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-web-project-'));
     const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-web-out-'));

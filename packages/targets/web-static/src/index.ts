@@ -9,6 +9,49 @@ interface Config {
   domain?: string;
 }
 
+const PROVIDERS = new Set(['cloudflare-pages', 'netlify', 's3-cloudfront', 'vercel']);
+
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`web-static requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function provider(value: Config['provider']): Config['provider'] {
+  const text = requireText(value, 'provider') as Config['provider'];
+  if (!PROVIDERS.has(text)) throw new Error(`web-static provider "${text}" is not supported`);
+  return text;
+}
+
+function optionalSlug(value: string | undefined, field: string): string | undefined {
+  const text = optionalText(value, field);
+  if (text && !/^[A-Za-z0-9._-]+$/.test(text)) {
+    throw new Error(`web-static ${field} must contain only letters, numbers, dots, underscores, or hyphens`);
+  }
+  return text;
+}
+
+function optionalDomain(value: string | undefined): string | undefined {
+  const domain = optionalText(value, 'domain');
+  if (!domain) return undefined;
+  if (/[:/?#\s]/.test(domain)) throw new Error('web-static domain must be a hostname without protocol or path');
+  return domain;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    dir: requireText(config.dir, 'dir'),
+    provider: provider(config.provider),
+    project: optionalSlug(config.project, 'project'),
+    domain: optionalDomain(config.domain),
+  };
+}
+
 async function listFiles(root: string, dir = root): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = await Promise.all(entries.map(async (entry) => {
@@ -21,11 +64,11 @@ async function listFiles(root: string, dir = root): Promise<string[]> {
 }
 
 function resolveSourceDir(ctx: { projectDir: string }, dir: string): string {
-  if (!dir?.trim()) throw new Error('web-static requires dir');
-  return resolve(ctx.projectDir, dir);
+  return resolve(ctx.projectDir, requireText(dir, 'dir'));
 }
 
 function siteUrl(config: Config): string | undefined {
+  config = normalizedConfig(config);
   return config.domain ? `https://${config.domain}` : undefined;
 }
 
@@ -34,6 +77,7 @@ export default defineTarget<Config>({
   kind: 'web',
   label: 'Static web (CDN)',
   async build(ctx, config) {
+    config = normalizedConfig(config);
     const sourceDir = resolveSourceDir(ctx, config.dir);
     const info = await stat(sourceDir);
     if (!info.isDirectory()) throw new Error(`web-static dir is not a directory: ${sourceDir}`);
@@ -57,6 +101,7 @@ export default defineTarget<Config>({
     return { artifact, meta: { files: files.length, manifest: join(ctx.outDir, 'web-static-manifest.json') } };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     const url = siteUrl(config);
     const project = config.project ? `/${config.project}` : '';
     ctx.log(`static site ready for ${config.provider}${project}${url ? ` · ${url}` : ''}`);
