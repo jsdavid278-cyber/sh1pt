@@ -11,10 +11,14 @@ interface Config {
 }
 
 const PLAN_FILE = 'androidtv-package-plan.json';
+const ANDROID_PACKAGE_NAME_RE = /^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
 
 function requirePackageName(config: Config): string {
   const packageName = config.packageName?.trim();
   if (!packageName) throw new Error('tv-androidtv requires packageName');
+  if (!ANDROID_PACKAGE_NAME_RE.test(packageName)) {
+    throw new Error(`tv-androidtv packageName must be a valid Android application ID, got "${config.packageName}"`);
+  }
   return packageName;
 }
 

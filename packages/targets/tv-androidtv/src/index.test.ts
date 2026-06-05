@@ -181,4 +181,29 @@ describe('Android TV package planning', () => {
       },
     });
   });
+
+  it('rejects package names with path separators before writing the plan', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-androidtv-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '2.4.0',
+    }) as any, {
+      packageName: '../com.acme.tv',
+      track: 'internal',
+    })).rejects.toThrow('packageName');
+  });
+
+  it('rejects package names without multiple Java identifier segments', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      artifact: 'dist/tv-release.aab',
+      channel: 'stable',
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      packageName: 'androidtv',
+      track: 'beta',
+    })).rejects.toThrow('packageName');
+  });
 });
