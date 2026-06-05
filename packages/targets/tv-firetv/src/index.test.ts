@@ -103,4 +103,27 @@ describe('Fire TV package planning', () => {
       },
     });
   });
+
+  it('rejects package names with path separators before writing the plan', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-firetv-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '1.8.0',
+    }) as any, {
+      packageName: '../com.acme.firetv',
+      appSku: 'ACMEFIRETV',
+    })).rejects.toThrow('packageName');
+  });
+
+  it('rejects package names without multiple Java identifier segments', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      artifact: 'dist/firetv.apk',
+      dryRun: true,
+    }) as any, {
+      packageName: 'firetv',
+      appSku: 'ACMEFIRETV',
+    })).rejects.toThrow('packageName');
+  });
 });
