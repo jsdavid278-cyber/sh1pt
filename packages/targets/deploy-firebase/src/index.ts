@@ -9,12 +9,50 @@ interface Config {
   message?: string;
 }
 
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`deploy-firebase requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function projectId(value: string | undefined): string {
+  const id = requireText(value, 'projectId');
+  if (!/^[A-Za-z0-9._-]+$/.test(id)) {
+    throw new Error('deploy-firebase projectId must contain only letters, numbers, dots, underscores, or hyphens');
+  }
+  return id;
+}
+
+function deployTargets(value: string[] | undefined): string[] | undefined {
+  return value?.map((target, index) => {
+    const text = requireText(target, `only[${index}]`);
+    if (text.includes(',')) throw new Error(`deploy-firebase only[${index}] must not contain commas`);
+    return text;
+  });
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    projectId: projectId(config.projectId),
+    only: deployTargets(config.only),
+    config: optionalText(config.config, 'config'),
+    message: optionalText(config.message, 'message'),
+  };
+}
+
 function configPath(ctx: { projectDir: string }, config: Config): string | undefined {
+  config = normalizedConfig(config);
   if (!config.config) return undefined;
   return isAbsolute(config.config) ? config.config : join(ctx.projectDir, config.config);
 }
 
 function deployArgs(ctx: { projectDir: string }, config: Config, token?: string): string[] {
+  config = normalizedConfig(config);
   const args = ['--yes', 'firebase-tools', 'deploy', '--project', config.projectId, '--json'];
   if (config.only?.length) args.push('--only', config.only.join(','));
   const firebaseConfig = configPath(ctx, config);
@@ -25,6 +63,7 @@ function deployArgs(ctx: { projectDir: string }, config: Config, token?: string)
 }
 
 function renderPlan(ctx: { projectDir: string; version: string }, config: Config): string {
+  config = normalizedConfig(config);
   return `${JSON.stringify({
     provider: 'firebase',
     projectId: config.projectId,
@@ -52,6 +91,7 @@ export default defineTarget<Config>({
   kind: 'web',
   label: 'Firebase Hosting / Functions',
   async build(ctx, config) {
+    config = normalizedConfig(config);
     const planPath = join(ctx.outDir, 'firebase-deploy.json');
     ctx.log('firebase emulators:exec --only hosting,functions');
     await mkdir(ctx.outDir, { recursive: true });
@@ -59,6 +99,7 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     const only = config.only?.length ? ` --only ${config.only.join(',')}` : '';
     ctx.log(`firebase deploy --project ${config.projectId}${only}`);
     if (ctx.dryRun) return { id: 'dry-run', meta: { command: ['npx', ...deployArgs(ctx, config)] } };

@@ -67,6 +67,33 @@ describe('Firebase deployment target', () => {
     });
   });
 
+  it('rejects invalid Firebase config before plan or CLI work', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      projectId: 'bad/project',
+    })).rejects.toThrow('projectId must contain only letters');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      projectId: 'my-firebase-project',
+      only: ['hosting,functions'],
+    })).rejects.toThrow('only[0] must not contain commas');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      projectId: 'my-firebase-project',
+      only: ['   '],
+    })).rejects.toThrow('deploy-firebase requires only[0]');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      projectId: 'my-firebase-project',
+      message: '   ',
+    })).rejects.toThrow('deploy-firebase requires message');
+  });
+
   it('requires a vault token for real deployments', async () => {
     await expect(adapter.ship(fakeShipContext({
       dryRun: false,
