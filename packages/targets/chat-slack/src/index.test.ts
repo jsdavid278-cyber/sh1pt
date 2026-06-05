@@ -70,4 +70,46 @@ describe('Slack app manifest generation', () => {
       scopes: { bot: ['chat:write'] },
     })).resolves.toEqual({ id: 'dry-run' });
   });
+
+  it('rejects invalid request URLs before writing manifests', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-slack-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({ outDir }) as any, {
+      appId: 'A123456',
+      clientId: '123.456',
+      distribution: 'workspace',
+      requestUrl: 'http://example.com/slack/events',
+      scopes: { bot: ['chat:write'] },
+    })).rejects.toThrow('requestUrl must be a valid HTTPS URL');
+  });
+
+  it('rejects unsupported distributions in dry-run shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      appId: 'A123456',
+      clientId: '123.456',
+      distribution: 'public-directory',
+      requestUrl: 'https://example.com/slack/events',
+      scopes: { bot: ['chat:write'] },
+    } as any)).rejects.toThrow('distribution must be one of');
+  });
+
+  it('rejects invalid slash command config in dry-run shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      appId: 'A123456',
+      clientId: '123.456',
+      distribution: 'workspace',
+      requestUrl: 'https://example.com/slack/events',
+      slashCommands: [
+        { command: 'ship now', url: 'https://example.com/slack/commands', description: 'Ship' },
+      ],
+      scopes: { bot: ['commands'] },
+    } as any)).rejects.toThrow('slash command must start with /');
+  });
 });
