@@ -14,17 +14,50 @@ interface RenderDeployResponse {
   deploy?: { id?: string };
 }
 
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`deploy-render requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function serviceId(config: Config): string | undefined {
+  const id = optionalText(config.serviceId, 'serviceId');
+  if (id && /[\\/?#\x00-\x1F\x7F]/.test(id)) {
+    throw new Error('deploy-render serviceId must be a single URL path segment');
+  }
+  return id;
+}
+
+function deployHookUrl(config: Config): string | undefined {
+  const url = optionalText(config.deployHookUrl, 'deployHookUrl');
+  if (!url) return undefined;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('deploy-render deployHookUrl must be a valid HTTPS URL');
+  }
+  if (parsed.protocol !== 'https:') throw new Error('deploy-render deployHookUrl must use HTTPS');
+  return url;
+}
+
 function blueprintPath(ctx: { projectDir: string }, config: Config): string {
-  const blueprint = config.blueprint ?? 'render.yaml';
+  const blueprint = optionalText(config.blueprint, 'blueprint') ?? 'render.yaml';
   return isAbsolute(blueprint) ? blueprint : join(ctx.projectDir, blueprint);
 }
 
 function renderPlan(ctx: { projectDir: string; version: string }, config: Config): string {
+  const id = serviceId(config);
+  const hookUrl = deployHookUrl(config);
   return `${JSON.stringify({
     provider: 'render',
-    serviceId: config.serviceId ?? null,
+    serviceId: id ?? null,
     blueprint: blueprintPath(ctx, config),
-    trigger: config.deployHookUrl ? 'deploy-hook' : 'api',
+    trigger: hookUrl ? 'deploy-hook' : 'api',
     waitForDeploy: config.waitForDeploy ?? false,
     version: ctx.version,
   }, null, 2)}\n`;
@@ -46,11 +79,12 @@ async function triggerDeployHook(url: string): Promise<string> {
 }
 
 async function createDeploy(ctx: { secret(key: string): string | undefined; version: string }, config: Config): Promise<string> {
-  if (!config.serviceId) throw new Error('Render serviceId is required for API deploys');
+  const id = serviceId(config);
+  if (!id) throw new Error('Render serviceId is required for API deploys');
   const token = ctx.secret('RENDER_API_KEY');
   if (!token) throw new Error('RENDER_API_KEY not in vault — run: sh1pt secret set RENDER_API_KEY <token>');
 
-  const res = await fetch(`https://api.render.com/v1/services/${config.serviceId}/deploys`, {
+  const res = await fetch(`https://api.render.com/v1/services/${id}/deploys`, {
     method: 'POST',
     headers: {
       accept: 'application/json',
@@ -61,7 +95,7 @@ async function createDeploy(ctx: { secret(key: string): string | undefined; vers
   });
   const data = await res.json().catch(() => ({})) as RenderDeployResponse;
   if (!res.ok) throw new Error(`Render deploy failed (${res.status})`);
-  return data.deploy?.id ?? data.id ?? `${config.serviceId}@${ctx.version}`;
+  return data.deploy?.id ?? data.id ?? `${id}@${ctx.version}`;
 }
 
 export default defineTarget<Config>({
@@ -80,6 +114,11 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    config = {
+      ...config,
+      serviceId: serviceId(config),
+      deployHookUrl: deployHookUrl(config),
+    };
     ctx.log(`render deploys create · service=${config.serviceId ?? 'linked'}`);
     if (ctx.dryRun) return { id: 'dry-run' };
     const id = config.deployHookUrl

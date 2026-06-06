@@ -50,6 +50,24 @@ describe('Render deployment target', () => {
     })).resolves.toEqual({ id: 'dry-run' });
   });
 
+  it('rejects invalid Render deploy config before plan or API work', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      blueprint: '   ',
+    })).rejects.toThrow('deploy-render requires blueprint');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      serviceId: '../srv-123',
+    })).rejects.toThrow('serviceId must be a single URL path segment');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      deployHookUrl: 'http://hooks.render.com/deploy',
+    })).rejects.toThrow('deployHookUrl must use HTTPS');
+  });
+
   it('requires a vault token for real API deploys', async () => {
     await expect(adapter.ship(fakeShipContext({
       dryRun: false,
