@@ -55,6 +55,8 @@ describe('getNextId', () => {
   it('ignores ids that do not match the inst- pattern', () => {
     const instances: FleetEntry[] = [
       { id: 'custom-id', provider: 'aws', status: 'running', createdAt: '', hourlyRate: 0.096 },
+      { id: '123-custom', provider: 'aws', status: 'running', createdAt: '', hourlyRate: 0.096 },
+      { id: 'inst-custom', provider: 'aws', status: 'running', createdAt: '', hourlyRate: 0.096 },
     ];
     expect(getNextId(instances)).toBe('inst-0001');
   });

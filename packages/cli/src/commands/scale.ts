@@ -113,8 +113,9 @@ const PROVIDER_PRICING: Record<string, { hourly: number; spot: number }> = {
 /** Generate the next sequential instance ID (inst-0001, inst-0002, …). */
 export function getNextId(instances: FleetEntry[]): string {
   const nums = instances
-    .map(i => parseInt(i.id.replace(/^inst-/, ''), 10))
-    .filter(n => !isNaN(n));
+    .map((i) => /^inst-(\d+)$/.exec(i.id)?.[1])
+    .filter((value): value is string => value !== undefined)
+    .map((value) => Number.parseInt(value, 10));
   const max = nums.length > 0 ? Math.max(...nums) : 0;
   return `inst-${String(max + 1).padStart(4, '0')}`;
 }
