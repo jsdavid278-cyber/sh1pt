@@ -72,6 +72,36 @@ describe('Deno Deploy target', () => {
     });
   });
 
+  it('rejects invalid Deno Deploy config before plan or CLI work', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      project: 'bad/project',
+      entrypoint: 'src/server.ts',
+    })).rejects.toThrow('project must contain only letters');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      project: 'edge-api',
+      entrypoint: '   ',
+    })).rejects.toThrow('deploy-denodeploy requires entrypoint');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      project: 'edge-api',
+      entrypoint: 'src/server.ts',
+      includeFiles: ['   '],
+    })).rejects.toThrow('deploy-denodeploy requires includeFiles[0]');
+
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      project: 'edge-api',
+      entrypoint: 'src/server.ts',
+      env: { 'bad-key': 'value' },
+    })).rejects.toThrow('env "bad-key" must be a valid environment variable name');
+  });
+
   it('requires a vault token for real deployments', async () => {
     await expect(adapter.ship(fakeShipContext({
       dryRun: false,
