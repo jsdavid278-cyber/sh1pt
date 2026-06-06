@@ -1,4 +1,4 @@
-import { contractTestTarget, fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { contractTestTarget, fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -49,5 +49,28 @@ describe('SteamOS target planning', () => {
       selfHosted: { uploadTo: 'github-pages' },
       outputArtifact: 'com.acme.deckapp.flatpak',
     });
+  });
+
+  it('rejects invalid app identifiers while building', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-steamos-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '2.0.0',
+    }) as any, {
+      ...sampleConfig,
+      appId: '../deckapp',
+    })).rejects.toThrow('desktop-steamos appId must be a valid reverse-DNS identifier');
+  });
+
+  it('rejects invalid app identifiers while shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '2.0.0',
+      dryRun: false,
+    }) as any, {
+      ...sampleConfig,
+      appId: 'com.acme/deckapp',
+    })).rejects.toThrow('desktop-steamos appId must be a valid reverse-DNS identifier');
   });
 });
