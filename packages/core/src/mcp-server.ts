@@ -280,10 +280,28 @@ export async function callHttpMcpTool(
 }
 
 function parseSseJsonRpc(text: string): unknown {
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith('data: ')) continue;
-    const data = trimmed.slice(6);
+  const events: string[] = [];
+  let dataLines: string[] = [];
+
+  const flush = () => {
+    if (dataLines.length === 0) return;
+    events.push(dataLines.join('\n'));
+    dataLines = [];
+  };
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trimEnd();
+    if (line === '') {
+      flush();
+      continue;
+    }
+    if (!line.startsWith('data:')) continue;
+    const data = line.slice(5).replace(/^ /, '');
+    dataLines.push(data);
+  }
+  flush();
+
+  for (const data of events) {
     if (data === '[DONE]') continue;
     try {
       const parsed = JSON.parse(data) as JsonRpcResponse;
