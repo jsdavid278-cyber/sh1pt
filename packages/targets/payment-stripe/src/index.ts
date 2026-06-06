@@ -6,6 +6,31 @@ interface Config {
   description?: string;
 }
 
+function requireText(value: unknown, name: string): string {
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} required`);
+  return value.trim();
+}
+
+function requirePositiveInteger(value: unknown, name: string, defaultValue: number): number {
+  const numberValue = value ?? defaultValue;
+  if (typeof numberValue !== 'number' || !Number.isInteger(numberValue) || numberValue <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return numberValue;
+}
+
+function requireCurrency(value: unknown): string {
+  const currency = typeof value === 'string' ? value.trim().toLowerCase() : 'usd';
+  if (!/^[a-z]{3}$/.test(currency)) throw new Error('currency must be a three-letter ISO code');
+  return currency;
+}
+
+function requireEmail(value: unknown): string {
+  const email = requireText(value, 'email');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('email must be a valid email address');
+  return email;
+}
+
 export default defineTarget<Config>({
   id: 'payment-stripe',
   kind: 'payment',
@@ -50,8 +75,8 @@ export default defineTarget<Config>({
     switch (cmd) {
       case 'create': {
         const args = ['payment_intents', 'create'];
-        const amount = config.args?.amount ?? 100;
-        const currency = (config.args?.currency as string) ?? 'usd';
+        const amount = requirePositiveInteger(config.args?.amount, 'amount', 100);
+        const currency = requireCurrency(config.args?.currency);
         args.push('--amount', String(amount));
         args.push('--currency', currency);
         if (config.description) args.push('--description', config.description);
@@ -61,28 +86,25 @@ export default defineTarget<Config>({
       }
 
       case 'get': {
-        const pi = config.args?.paymentIntentId as string;
-        if (!pi) throw new Error('paymentIntentId required');
+        const pi = requireText(config.args?.paymentIntentId, 'paymentIntentId');
         const { stdout } = await exec('stripe', ['payment_intents', 'retrieve', pi], { log: ctx.log });
         return { id: pi, meta: { raw: stdout.trim() } };
       }
 
       case 'list': {
-        const limit = config.args?.limit ?? 10;
+        const limit = requirePositiveInteger(config.args?.limit, 'limit', 10);
         const { stdout } = await exec('stripe', ['payment_intents', 'list', `--limit=${limit}`], { log: ctx.log });
         return { id: `list-${Date.now()}`, meta: { raw: stdout.trim() } };
       }
 
       case 'customer': {
-        const email = config.args?.email as string;
-        if (!email) throw new Error('email required');
+        const email = requireEmail(config.args?.email);
         const { stdout } = await exec('stripe', ['customers', 'create', `--email=${email}`], { log: ctx.log });
         return { id: `cus_${Date.now()}`, meta: { raw: stdout.trim() } };
       }
 
       case 'refund': {
-        const pi = config.args?.paymentIntentId as string;
-        if (!pi) throw new Error('paymentIntentId required');
+        const pi = requireText(config.args?.paymentIntentId, 'paymentIntentId');
         const { stdout } = await exec('stripe', ['refunds', 'create', `--payment-intent=${pi}`], { log: ctx.log });
         return { id: `refund_${Date.now()}`, meta: { raw: stdout.trim() } };
       }
