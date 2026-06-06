@@ -7,6 +7,16 @@ interface Config {
   dockerfile?: string;
 }
 
+const STRATEGIES = ['rolling', 'canary', 'bluegreen', 'immediate'] as const;
+
+function deployStrategy(ctx: { channel: string }, config: Config): NonNullable<Config['strategy']> {
+  const selectedStrategy = config.strategy ?? (ctx.channel === 'stable' ? 'rolling' : 'canary');
+  if (STRATEGIES.includes(selectedStrategy as (typeof STRATEGIES)[number])) {
+    return selectedStrategy as NonNullable<Config['strategy']>;
+  }
+  throw new Error(`deploy-fly strategy must be one of: ${STRATEGIES.join(', ')}`);
+}
+
 export default defineTarget<Config>({
   id: 'deploy-fly',
   kind: 'web',
@@ -16,7 +26,7 @@ export default defineTarget<Config>({
     return { artifact: `${ctx.outDir}/fly-image` };
   },
   async ship(ctx, config) {
-    const strategy = config.strategy ?? (ctx.channel === 'stable' ? 'rolling' : 'canary');
+    const strategy = deployStrategy(ctx, config);
     ctx.log(`flyctl deploy · app=${config.app} · strategy=${strategy}`);
 
     if (ctx.dryRun) return { id: 'dry-run' };
