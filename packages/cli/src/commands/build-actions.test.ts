@@ -61,4 +61,26 @@ jobs:
 
     expect(findings).toHaveLength(0);
   });
+
+  it('detects unpinned shorthand job container images', () => {
+    const findings = auditWorkflowContent('workflow.yml', `
+name: Container
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: node:22
+    steps:
+      - uses: actions/checkout@v4
+      - run: pnpm test
+`);
+
+    expect(findings).toContainEqual(expect.objectContaining({
+      rule: 'unpinned-docker-image',
+      message: 'image node:22 is not pinned to a digest',
+    }));
+  });
 });
