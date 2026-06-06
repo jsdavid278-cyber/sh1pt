@@ -17,6 +17,61 @@ interface Config {
   applicationUuid?: string;        // existing app to redeploy
 }
 
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`deploy-coolify requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function baseUrl(value: string | undefined): string {
+  const url = requireText(value, 'baseUrl').replace(/\/+$/, '');
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('deploy-coolify baseUrl must be a valid HTTPS URL');
+  }
+  if (parsed.protocol !== 'https:') throw new Error('deploy-coolify baseUrl must use HTTPS');
+  return url;
+}
+
+function uuidSegment(value: string | undefined, field: string): string {
+  const text = requireText(value, field);
+  if (/[\\/?#\s\x00-\x1F\x7F]/.test(text)) {
+    throw new Error(`deploy-coolify ${field} must be a single URL-safe segment`);
+  }
+  return text;
+}
+
+function optionalUuidSegment(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : uuidSegment(value, field);
+}
+
+function environmentName(config: Config, channel: string): string {
+  const env = config.environmentName === undefined
+    ? (channel === 'stable' ? 'production' : 'staging')
+    : requireText(config.environmentName, 'environmentName');
+  if (!/^[A-Za-z0-9._-]+$/.test(env)) {
+    throw new Error('deploy-coolify environmentName must contain only letters, numbers, dots, underscores, or hyphens');
+  }
+  return env;
+}
+
+function normalizedConfig(config: Config, channel: string): Config {
+  return {
+    ...config,
+    baseUrl: baseUrl(config.baseUrl),
+    projectUuid: uuidSegment(config.projectUuid, 'projectUuid'),
+    serverUuid: optionalUuidSegment(config.serverUuid, 'serverUuid'),
+    environmentName: environmentName(config, channel),
+    applicationUuid: optionalUuidSegment(config.applicationUuid, 'applicationUuid'),
+  };
+}
+
 export default defineTarget<Config>({
   id: 'deploy-coolify',
   kind: 'web',
@@ -26,6 +81,7 @@ export default defineTarget<Config>({
     return { artifact: ctx.projectDir };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config, ctx.channel);
     const env = config.environmentName ?? (ctx.channel === 'stable' ? 'production' : 'staging');
     ctx.log(`coolify · deploy · project=${config.projectUuid} · env=${env}`);
     if (ctx.dryRun) return { id: 'dry-run' };
