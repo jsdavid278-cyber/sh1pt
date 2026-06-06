@@ -14,10 +14,22 @@ describe('resolveInput', () => {
     expect(r.inferredName).toBe('sh1pt');
   });
 
+  it('detects forge repo urls with a trailing slash', () => {
+    const r = resolveInput('https://github.com/profullstack/sh1pt/');
+    expect(r.kind).toBe('git');
+    expect(r.value).toBe('https://github.com/profullstack/sh1pt');
+    expect(r.inferredName).toBe('sh1pt');
+  });
+
   it('detects gitlab repo urls', () => {
     const r = resolveInput('https://gitlab.com/some-org/some-repo');
     expect(r.kind).toBe('git');
     expect(r.inferredName).toBe('some-repo');
+  });
+
+  it('keeps forge subpath urls classified as live sites', () => {
+    const r = resolveInput('https://github.com/profullstack/sh1pt/issues/1');
+    expect(r.kind).toBe('url');
   });
 
   it('detects bitbucket repo urls', () => {
