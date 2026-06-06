@@ -137,4 +137,30 @@ describe('deno.land/x package target', () => {
       sourceRepo: '',
     })).rejects.toThrow('pkg-deno requires sourceRepo');
   });
+
+  it('rejects invalid deno.land/x publish config before git work', async () => {
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      moduleName: 'MyMod',
+      sourceRepo: 'acme/my-mod',
+    })).rejects.toThrow('moduleName must contain only lowercase');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      moduleName: 'my_mod',
+      sourceRepo: 'acme',
+    })).rejects.toThrow('sourceRepo must look like owner/repo');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      moduleName: 'my_mod',
+      sourceRepo: 'acme/my-mod',
+      remote: 'up stream',
+    })).rejects.toThrow('remote must not contain whitespace');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      moduleName: 'my_mod',
+      sourceRepo: 'acme/my-mod',
+      tagPrefix: 'release ',
+    })).rejects.toThrow('tagPrefix must not contain whitespace');
+
+    expect(execMock).not.toHaveBeenCalled();
+  });
 });
