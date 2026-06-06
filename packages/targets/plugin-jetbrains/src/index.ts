@@ -12,6 +12,24 @@ interface Config {
   artifactPath?: string;
 }
 
+const CHANNELS = ['stable', 'eap'] as const;
+
+function requirePluginId(config: Config): string {
+  const pluginId = config.pluginId?.trim();
+  if (!/^\d+$/.test(pluginId)) {
+    throw new Error('plugin-jetbrains pluginId must be numeric');
+  }
+  return pluginId;
+}
+
+function requireChannel(config: Config): NonNullable<Config['channel']> {
+  const channel = String(config.channel ?? 'stable').trim();
+  if (!CHANNELS.includes(channel as NonNullable<Config['channel']>)) {
+    throw new Error(`plugin-jetbrains channel must be one of: ${CHANNELS.join(', ')}`);
+  }
+  return channel as NonNullable<Config['channel']>;
+}
+
 function pluginDir(ctx: { projectDir: string }, config: Config): string {
   if (!config.projectDir) return ctx.projectDir;
   return isAbsolute(config.projectDir) ? config.projectDir : join(ctx.projectDir, config.projectDir);
@@ -31,10 +49,11 @@ function publishArgs(config: Config, channel: string): string[] {
 }
 
 function artifactPath(ctx: { projectDir: string; version: string }, config: Config): string {
+  const pluginId = requirePluginId(config);
   if (config.artifactPath) {
     return isAbsolute(config.artifactPath) ? config.artifactPath : join(pluginDir(ctx, config), config.artifactPath);
   }
-  return join(pluginDir(ctx, config), 'build', 'distributions', `${config.pluginId}-${ctx.version}.zip`);
+  return join(pluginDir(ctx, config), 'build', 'distributions', `${pluginId}-${ctx.version}.zip`);
 }
 
 export default defineTarget<Config>({
@@ -42,6 +61,7 @@ export default defineTarget<Config>({
   kind: 'plugin',
   label: 'JetBrains Marketplace',
   async build(ctx, config) {
+    requirePluginId(config);
     const cwd = pluginDir(ctx, config);
     const command = gradleCommand(config);
     const args = buildArgs(config);
@@ -64,7 +84,8 @@ export default defineTarget<Config>({
     return { artifact, meta: { command: [command, ...args], cwd } };
   },
   async ship(ctx, config) {
-    const channel = config.channel ?? 'stable';
+    const pluginId = requirePluginId(config);
+    const channel = requireChannel(config);
     const cwd = pluginDir(ctx, config);
     const command = gradleCommand(config);
     const args = publishArgs(config, channel);
@@ -89,8 +110,8 @@ export default defineTarget<Config>({
     });
 
     return {
-      id: `${config.pluginId}@${ctx.version}`,
-      url: `https://plugins.jetbrains.com/plugin/${config.pluginId}`,
+      id: `${pluginId}@${ctx.version}`,
+      url: `https://plugins.jetbrains.com/plugin/${pluginId}`,
     };
   },
   async status(id) {

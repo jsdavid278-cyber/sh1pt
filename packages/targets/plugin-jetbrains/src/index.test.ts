@@ -56,4 +56,30 @@ describe('JetBrains plugin target', () => {
       },
     });
   });
+
+  it('rejects non-numeric plugin IDs before writing dry-run build plans', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-jetbrains-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      projectDir: '/repo',
+      outDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      pluginId: 'plugin-12345',
+      projectDir: 'plugins/idea',
+    })).rejects.toThrow('pluginId must be numeric');
+  });
+
+  it('rejects unsupported publish channels before dry-run publishing', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      projectDir: '/repo',
+      dryRun: true,
+    }) as any, {
+      pluginId: '12345',
+      channel: 'preview',
+      projectDir: 'plugins/idea',
+    } as any)).rejects.toThrow('channel must be one of');
+  });
 });
