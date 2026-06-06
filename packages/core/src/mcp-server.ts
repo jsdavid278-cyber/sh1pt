@@ -263,7 +263,7 @@ export async function callHttpMcpTool(
     const ct = res.headers.get('content-type') ?? '';
     const result = ct.includes('text/event-stream')
       ? parseSseJsonRpc(await res.text())
-      : (await res.json() as JsonRpcResponse).result;
+      : parseJsonRpcResponse(await res.json());
     return { result, headers: res.headers };
   };
 
@@ -312,6 +312,12 @@ function parseSseJsonRpc(text: string): unknown {
     }
   }
   return null;
+}
+
+function parseJsonRpcResponse(payload: unknown): unknown {
+  const parsed = payload as JsonRpcResponse;
+  if (parsed.error) throw new Error(`MCP error ${parsed.error.code}: ${parsed.error.message}`);
+  return parsed.result;
 }
 
 function normalizeToolResult(result: unknown): McpToolResult {
