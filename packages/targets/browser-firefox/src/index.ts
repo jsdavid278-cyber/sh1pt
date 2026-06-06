@@ -22,8 +22,41 @@ interface FirefoxPackagePlan {
   };
 }
 
+function requireValue(value: string | undefined, field: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) throw new Error(`browser-firefox requires ${field}`);
+  return trimmed;
+}
+
+function extensionId(value: string | undefined): string {
+  const id = requireValue(value, 'extensionId');
+  if (/\s/.test(id)) throw new Error('browser-firefox extensionId must not contain whitespace');
+  return id;
+}
+
+function configuredSourceDir(value: string | undefined): string {
+  return value === undefined ? 'dist' : requireValue(value, 'sourceDir');
+}
+
+function channel(value: string | undefined): 'listed' | 'unlisted' {
+  if (value === undefined) return 'listed';
+  if (value !== 'listed' && value !== 'unlisted') {
+    throw new Error('browser-firefox channel must be listed or unlisted');
+  }
+  return value;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    extensionId: extensionId(config.extensionId),
+    sourceDir: configuredSourceDir(config.sourceDir),
+    channel: channel(config.channel),
+  };
+}
+
 function sourceDir(ctx: { projectDir: string }, config: Config): string {
-  const dir = config.sourceDir ?? 'dist';
+  const dir = configuredSourceDir(config.sourceDir);
   return isAbsolute(dir) ? dir : join(ctx.projectDir, dir);
 }
 
@@ -43,6 +76,7 @@ function packagePlan(
   ctx: { projectDir: string; outDir: string; version: string },
   config: Config,
 ): FirefoxPackagePlan {
+  config = normalizedConfig(config);
   const src = sourceDir(ctx, config);
   const filename = artifactName(ctx, config);
   return {
@@ -101,11 +135,11 @@ export default defineTarget<Config>({
     return { artifact: artifactPath(ctx, config) };
   },
   async ship(ctx, config) {
-    const channel = config.channel ?? 'listed';
-    ctx.log(`sign + submit ${config.extensionId} to AMO (channel: ${channel})`);
-    if (ctx.dryRun) return { id: 'dry-run' };
+    config = normalizedConfig(config);
+    ctx.log(`sign + submit ${config.extensionId} to AMO (channel: ${config.channel})`);
+    if (ctx.dryRun) return { id: 'dry-run', meta: { extensionId: config.extensionId, channel: config.channel } };
     // TODO: web-ext sign --api-key=${AMO_JWT_ISSUER} --api-secret=${AMO_JWT_SECRET}
-    //       --channel=${channel} --source-dir ${config.sourceDir ?? 'dist/'}
+    //       --channel=${config.channel} --source-dir ${config.sourceDir}
     // Or: POST https://addons.mozilla.org/api/v5/addons/<id>/versions/ with JWT auth
     return {
       id: `${config.extensionId}@${ctx.version}`,

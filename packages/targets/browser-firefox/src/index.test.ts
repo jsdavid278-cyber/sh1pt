@@ -1,4 +1,4 @@
-import { fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -105,5 +105,27 @@ describe('browser-firefox target adapter', () => {
       throwOnNonZero: true,
     });
     expect(result).toEqual({ artifact });
+  });
+
+  it('rejects invalid AMO package config before packaging or shipping', async () => {
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      extensionId: '',
+    })).rejects.toThrow('browser-firefox requires extensionId');
+
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      extensionId: 'my ext@example.com',
+    })).rejects.toThrow('extensionId must not contain whitespace');
+
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      extensionId: 'myext@example.com',
+      sourceDir: '',
+    })).rejects.toThrow('browser-firefox requires sourceDir');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      extensionId: 'myext@example.com',
+      channel: 'beta',
+    } as any)).rejects.toThrow('channel must be listed or unlisted');
+
+    expect(execMock).not.toHaveBeenCalled();
   });
 });
