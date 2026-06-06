@@ -12,17 +12,29 @@ interface Config {
   signingIdentity?: string; // e.g. "Developer ID Application: ACME Inc (ABCDE12345)"
 }
 
+const BUNDLE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$/;
+
+function requireBundleId(config: Config): string {
+  const bundleId = config.bundleId?.trim();
+  if (!bundleId) throw new Error('desktop-mac requires bundleId');
+  if (!BUNDLE_ID_PATTERN.test(bundleId)) {
+    throw new Error('desktop-mac bundleId must be a valid reverse-DNS identifier');
+  }
+  return bundleId;
+}
+
 export default defineTarget<Config>({
   id: 'desktop-mac',
   kind: 'desktop',
   label: 'macOS (Mac App Store / notarized DMG)',
   async build(ctx, config) {
+    const bundleId = requireBundleId(config);
     ctx.log(`xcodebuild archive · distribution=${config.distribution}`);
     const artifactDir = join(ctx.outDir, 'macos');
     const planPath = join(artifactDir, 'macos-build-plan.json');
     await mkdir(artifactDir, { recursive: true });
     await writeFile(planPath, `${JSON.stringify({
-      bundleId: config.bundleId,
+      bundleId,
       teamId: config.teamId,
       scheme: config.scheme,
       distribution: config.distribution,
@@ -33,13 +45,14 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    const bundleId = requireBundleId(config);
     const targets = config.distribution === 'both' ? ['App Store', 'DMG host'] : [config.distribution === 'mas' ? 'App Store' : 'DMG host'];
     ctx.log(`publish ${config.bundleId}@${ctx.version} → ${targets.join(', ')}`);
     if (ctx.dryRun) return { id: 'dry-run' };
     // TODO:
     //  - MAS: altool upload to App Store Connect
     //  - DMG: upload to configured CDN/GitHub release + update Sparkle appcast
-    return { id: `${config.bundleId}@${ctx.version}` };
+    return { id: `${bundleId}@${ctx.version}` };
   },
   async status(id) {
     return { state: 'in-review', version: id };
