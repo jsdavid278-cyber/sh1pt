@@ -19,11 +19,45 @@ interface Config {
   deviceName?: string;
 }
 
+function requireValue(value: string | undefined, field: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) throw new Error(`chat-signal requires ${field}`);
+  return trimmed;
+}
+
+function optionalValue(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireValue(value, field);
+}
+
+function phoneNumber(value: string | undefined): string {
+  const phone = requireValue(value, 'phoneNumber');
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error('chat-signal phoneNumber must be a valid E.164 number');
+  return phone;
+}
+
+function runtime(value: Config['runtime'] | undefined): Config['runtime'] {
+  if (value !== 'signal-cli' && value !== 'signald') {
+    throw new Error('chat-signal runtime must be signal-cli or signald');
+  }
+  return value;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    phoneNumber: phoneNumber(config.phoneNumber),
+    runtime: runtime(config.runtime),
+    captchaToken: optionalValue(config.captchaToken, 'captchaToken'),
+    deviceName: optionalValue(config.deviceName, 'deviceName'),
+  };
+}
+
 export default defineTarget<Config>({
   id: 'chat-signal',
   kind: 'chat',
   label: 'Signal (signal-cli / signald)',
   async build(ctx, config) {
+    config = normalizedConfig(config);
     ctx.log(`prepare ${config.runtime} config for ${config.phoneNumber}`);
     const artifactDir = join(ctx.outDir, 'signal-runtime');
     const planPath = join(artifactDir, 'signal-runtime-plan.json');
@@ -37,8 +71,10 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     ctx.log(`register Signal number ${config.phoneNumber} (${config.runtime})`);
     if (ctx.dryRun) return { id: 'dry-run' };
+    if (!config.captchaToken) throw new Error('chat-signal requires captchaToken for Signal registration');
     // TODO:
     //  - signal-cli register -v <phone> (requires captchaToken)
     //  - verify with SMS/voice code (human step unless using a SIP gateway)

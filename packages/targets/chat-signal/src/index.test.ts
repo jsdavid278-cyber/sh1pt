@@ -1,4 +1,4 @@
-import { contractTestTarget, fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { contractTestTarget, fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -37,5 +37,28 @@ describe('Signal target planning', () => {
       deviceName: 'sh1pt-test',
       captchaTokenPresent: true,
     });
+  });
+
+  it('rejects invalid Signal config before writing a plan or registering', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      phoneNumber: '415-555-1234',
+      runtime: 'signal-cli',
+    })).rejects.toThrow('phoneNumber must be a valid E.164 number');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      phoneNumber: '+14155551234',
+      runtime: 'desktop',
+    } as any)).rejects.toThrow('runtime must be signal-cli or signald');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      phoneNumber: '+14155551234',
+      runtime: 'signal-cli',
+      deviceName: '',
+    })).rejects.toThrow('chat-signal requires deviceName');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: false }) as any, {
+      phoneNumber: '+14155551234',
+      runtime: 'signal-cli',
+    })).rejects.toThrow('requires captchaToken for Signal registration');
   });
 });
