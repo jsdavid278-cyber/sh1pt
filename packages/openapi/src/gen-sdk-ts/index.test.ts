@@ -40,6 +40,7 @@ describe('generateTsSdk', () => {
     expect(src).toContain('class PetstoreClient');
     expect(src).toContain('async listPets()');
     expect(src).toContain('async getPet(petId: string)');
+    expect(src).toContain('${encodeURIComponent(petId)}');
     expect(src).toContain('async createPet(opts: { body: unknown }):');
     expect(src).toContain('pets = {');
   });

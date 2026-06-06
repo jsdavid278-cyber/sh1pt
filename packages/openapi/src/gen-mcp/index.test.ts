@@ -30,6 +30,7 @@ describe('generateMcpServer', () => {
     const index = await readFile(join(outDir, 'index.js'), 'utf8');
     expect(index).toContain('name: "getPet"');
     expect(index).toContain('case "getPet":');
+    expect(index).toContain('${encodeURIComponent(String(a["petId"]))}');
     expect(index).toContain('@modelcontextprotocol/sdk');
 
     const pkg = JSON.parse(await readFile(join(outDir, 'package.json'), 'utf8'));
