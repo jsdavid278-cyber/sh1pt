@@ -6,6 +6,7 @@ import { lint } from '@profullstack/sh1pt-policy';
 import type { Manifest } from '@profullstack/sh1pt-core';
 import { existsSync, statSync } from 'node:fs';
 import { initAction } from './init.js';
+import { categoryById, packageFor } from '../adapter-registry.js';
 
 /**
  * Load the project manifest by dynamically importing a config file.
@@ -143,6 +144,20 @@ shipCmd
 
 const targetSubCmd = shipCmd.command('target').description('Manage targets in the manifest');
 
+export function availableTargetAdapters(): Array<{
+  id: string;
+  package: string;
+  setupCommand: string;
+}> {
+  const targets = categoryById('targets');
+  if (!targets) return [];
+  return targets.adapters.map((id) => ({
+    id,
+    package: packageFor(targets, id),
+    setupCommand: `sh1pt targets ${id} setup`,
+  }));
+}
+
 targetSubCmd
   .command('add <id>')
   .description('Add a target adapter to sh1pt.config.ts')
@@ -196,6 +211,17 @@ targetSubCmd
 targetSubCmd
   .command('available')
   .description('List every target adapter available to install')
-  .action(() => {
-    console.log(kleur.dim('[stub] target available — fetch from registry'));
+  .option('--json', 'output as JSON for automation')
+  .action((opts: { json?: boolean }) => {
+    const targets = availableTargetAdapters();
+
+    if (opts.json) {
+      console.log(JSON.stringify(targets, null, 2));
+      return;
+    }
+
+    console.log(kleur.bold(`Available target adapters (${targets.length}):`));
+    for (const target of targets) {
+      console.log(`  ${kleur.cyan(target.id)}  ${kleur.dim(target.package)}`);
+    }
   });

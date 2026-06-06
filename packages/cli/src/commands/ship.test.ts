@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shipCmd } from './ship.js';
+import { availableTargetAdapters, shipCmd } from './ship.js';
 
 describe('shipCmd', () => {
   it('is registered as a top-level command named "ship"', () => {
@@ -33,5 +33,21 @@ describe('shipCmd', () => {
     expect(optNames).toContain('--channel');
     expect(optNames).toContain('--dry-run');
     expect(optNames).toContain('--skip-lint');
+  });
+
+  it('lists available target adapters from the registry', () => {
+    expect(availableTargetAdapters()).toContainEqual({
+      id: 'deploy-vercel',
+      package: '@profullstack/sh1pt-target-deploy-vercel',
+      setupCommand: 'sh1pt targets deploy-vercel setup',
+    });
+  });
+
+  it('supports JSON output for target available', () => {
+    const targetCmd = shipCmd.commands.find((c) => c.name() === 'target');
+    expect(targetCmd).toBeDefined();
+    const availableCmd = targetCmd!.commands.find((c) => c.name() === 'available');
+    expect(availableCmd).toBeDefined();
+    expect(availableCmd!.options.map((o) => o.long)).toContain('--json');
   });
 });
