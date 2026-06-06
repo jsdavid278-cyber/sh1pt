@@ -70,6 +70,37 @@ describe('normalize', () => {
     expect(createPet.requestBody?.required).toBe(true);
   });
 
+  it('decodes JSON Pointer escapes when resolving refs', () => {
+    const ir = normalize({
+      openapi: '3.0.0',
+      info: { title: 'EscapedRefs', version: '1' },
+      paths: {
+        '/escaped': {
+          get: {
+            responses: {
+              '200': { $ref: '#/components/responses/Foo~1Bar~0Baz' },
+            },
+          },
+        },
+      },
+      components: {
+        responses: {
+          'Foo/Bar~Baz': {
+            description: 'escaped ok',
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(ir.operations[0]?.responses[0]?.description).toBe('escaped ok');
+    expect(ir.operations[0]?.responses[0]?.contentType).toBe('application/json');
+  });
+
   it('auto-generates operationId when missing', () => {
     const ir = normalize({
       openapi: '3.0.0',

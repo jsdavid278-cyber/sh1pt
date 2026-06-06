@@ -134,7 +134,8 @@ function resolveRef(node: unknown, root: Record<string, unknown>): unknown {
   const parts = ref.slice(2).split('/');
   let cur: unknown = root;
   for (const p of parts) {
-    if (cur && typeof cur === 'object') cur = (cur as Record<string, unknown>)[p];
+    const key = p.replace(/~1/g, '/').replace(/~0/g, '~');
+    if (cur && typeof cur === 'object') cur = (cur as Record<string, unknown>)[key];
     else return undefined;
   }
   return cur;
