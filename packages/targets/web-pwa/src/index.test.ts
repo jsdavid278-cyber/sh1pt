@@ -104,4 +104,26 @@ describe('web-pwa target', () => {
       url: 'https://example.com/app',
     });
   });
+
+  it('rejects invalid PWA config before asset generation or shipping', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...sampleConfig,
+      manifestPath: '   ',
+    })).rejects.toThrow('web-pwa requires manifestPath');
+
+    await expect(adapter.ship(fakeBuildContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      startUrl: '   ',
+    })).rejects.toThrow('web-pwa requires startUrl');
+
+    await expect(adapter.ship(fakeBuildContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      display: 'windowed' as any,
+    })).rejects.toThrow('display "windowed" is not supported');
+
+    await expect(adapter.ship(fakeBuildContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      publicUrl: 'ftp://example.com',
+    })).rejects.toThrow('publicUrl must use HTTP(S)');
+  });
 });
