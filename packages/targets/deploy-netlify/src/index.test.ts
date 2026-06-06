@@ -68,6 +68,26 @@ describe('Netlify deployment target', () => {
     });
   });
 
+  it('rejects invalid Netlify config before plan or CLI work', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      dir: '   ',
+    })).rejects.toThrow('deploy-netlify requires dir');
+
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      siteId: 'site/123',
+    })).rejects.toThrow('siteId must be a single URL path segment');
+
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      message: '   ',
+    })).rejects.toThrow('deploy-netlify requires message');
+  });
+
   it('requires a vault token for real deployments', async () => {
     await expect(adapter.ship(fakeShipContext({
       version: '1.2.3',
