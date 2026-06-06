@@ -19,7 +19,12 @@ COPY . .
 # OOMs the build container.
 RUN printf 'packages:\n  - sites/sh1pt.com\n  - packages/core\n  - packages/cli\n  - packages/policy\n  - packages/openapi\n  - packages/actions-fleet-core\n  - packages/actions\n' > pnpm-workspace.yaml
 
-RUN pnpm install --frozen-lockfile=false
+# Next probes the app env file during build. Railway injects real values at
+# runtime, so an empty file keeps container builds deterministic.
+RUN touch sites/sh1pt.com/.env
+
+RUN pnpm --filter sh1pt-dot-com... install --frozen-lockfile=false
+RUN pnpm --filter sh1pt-dot-com^... --if-present build
 RUN pnpm --filter sh1pt-dot-com build
 
 FROM node:20-bookworm-slim AS runner
