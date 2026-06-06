@@ -13,21 +13,82 @@ interface Config {
   vars?: Record<string, string>;
 }
 
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`deploy-workers requires ${field}`);
+  return text;
+}
+
+function optionalText(value: string | undefined, field: string): string | undefined {
+  return value === undefined ? undefined : requireText(value, field);
+}
+
+function requireSegment(value: string | undefined, field: string): string {
+  const text = requireText(value, field);
+  if (/[\\/?#\s\x00-\x1F\x7F]/.test(text)) {
+    throw new Error(`deploy-workers ${field} must be a single URL-safe segment`);
+  }
+  return text;
+}
+
+function compatibilityDate(value: string | undefined): string | undefined {
+  const date = optionalText(value, 'compatibilityDate');
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error('deploy-workers compatibilityDate must use YYYY-MM-DD');
+  }
+  return date;
+}
+
+function routes(value: string[] | undefined): string[] | undefined {
+  return value?.map((route, index) => requireText(route, `routes[${index}]`));
+}
+
+function workerVars(value: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (value === undefined) return undefined;
+  for (const [key, entryValue] of Object.entries(value)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`deploy-workers var "${key}" must be a valid environment variable name`);
+    }
+    if (typeof entryValue !== 'string') {
+      throw new Error(`deploy-workers var "${key}" must be a string`);
+    }
+  }
+  return value;
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    name: requireSegment(config.name, 'name'),
+    accountId: requireSegment(config.accountId, 'accountId'),
+    routes: routes(config.routes),
+    env: optionalText(config.env, 'env'),
+    compatibilityDate: compatibilityDate(config.compatibilityDate),
+    entrypoint: optionalText(config.entrypoint, 'entrypoint'),
+    configPath: optionalText(config.configPath, 'configPath'),
+    vars: workerVars(config.vars),
+  };
+}
+
 function workerEntry(ctx: { projectDir: string }, config: Config): string | undefined {
+  config = normalizedConfig(config);
   if (!config.entrypoint) return undefined;
   return isAbsolute(config.entrypoint) ? config.entrypoint : join(ctx.projectDir, config.entrypoint);
 }
 
 function wranglerConfig(ctx: { projectDir: string }, config: Config): string | undefined {
+  config = normalizedConfig(config);
   if (!config.configPath) return undefined;
   return isAbsolute(config.configPath) ? config.configPath : join(ctx.projectDir, config.configPath);
 }
 
 function deployEnv(ctx: { channel: string }, config: Config): string {
+  config = normalizedConfig(config);
   return config.env ?? (ctx.channel === 'stable' ? 'production' : 'preview');
 }
 
 function deployArgs(ctx: { channel: string; projectDir: string }, config: Config, opts: { dryRun?: boolean } = {}): string[] {
+  config = normalizedConfig(config);
   const args = ['--yes', 'wrangler', 'deploy'];
   const entrypoint = workerEntry(ctx, config);
   if (entrypoint) args.push(entrypoint);
@@ -43,6 +104,7 @@ function deployArgs(ctx: { channel: string; projectDir: string }, config: Config
 }
 
 function renderPlan(ctx: { channel: string; projectDir: string; version: string }, config: Config): string {
+  config = normalizedConfig(config);
   return `${JSON.stringify({
     provider: 'cloudflare-workers',
     name: config.name,
@@ -67,6 +129,7 @@ export default defineTarget<Config>({
   kind: 'web',
   label: 'Cloudflare Workers',
   async build(ctx, config) {
+    config = normalizedConfig(config);
     const planPath = join(ctx.outDir, 'workers-deploy.json');
     ctx.log(`wrangler deploy --dry-run - name=${config.name}`);
     await mkdir(ctx.outDir, { recursive: true });
@@ -74,6 +137,7 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     const env = deployEnv(ctx, config);
     ctx.log(`wrangler deploy - name=${config.name} - env=${env}`);
     if (ctx.dryRun) {
