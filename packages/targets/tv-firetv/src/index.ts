@@ -10,9 +10,19 @@ interface Config {
 }
 
 const PLAN_FILE = 'firetv-package-plan.json';
+const ANDROID_PACKAGE_NAME_RE = /^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
+
+function requirePackageName(config: Config): string {
+  const packageName = config.packageName?.trim();
+  if (!packageName || !ANDROID_PACKAGE_NAME_RE.test(packageName)) {
+    throw new Error(`tv-firetv packageName must be a valid Android application ID, got "${config.packageName}"`);
+  }
+  return packageName;
+}
 
 function artifactPath(ctx: { outDir: string }, config: Config): string {
-  return config.apkPath ?? join(ctx.outDir, 'firetv', `${config.packageName}.apk`);
+  const packageName = requirePackageName(config);
+  return config.apkPath ?? join(ctx.outDir, 'firetv', `${packageName}.apk`);
 }
 
 function targeting(config: Config): NonNullable<Config['deviceTargeting']> {
@@ -20,10 +30,11 @@ function targeting(config: Config): NonNullable<Config['deviceTargeting']> {
 }
 
 function buildPlan(ctx: { outDir: string; version: string; channel: string }, config: Config) {
+  const packageName = requirePackageName(config);
   const artifact = artifactPath(ctx, config);
   const deviceTargeting = targeting(config);
   return {
-    packageName: config.packageName,
+    packageName,
     appSku: config.appSku,
     version: ctx.version,
     channel: ctx.channel,
@@ -83,7 +94,7 @@ export default defineTarget<Config>({
         id: 'dry-run',
         meta: {
           appSku: config.appSku,
-          packageName: config.packageName,
+          packageName: plan.packageName,
           artifact: ctx.artifact,
           deviceTargeting: plan.deviceTargeting,
           commands: plan.commands.slice(1),
