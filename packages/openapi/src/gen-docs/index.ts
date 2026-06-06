@@ -40,14 +40,14 @@ ${ir.servers.length ? `## Servers\n\n${ir.servers.map((s) => `- \`${s}\``).join(
 ## Endpoints
 
 ${Object.entries(groups)
-  .map(([tag, ops]) => `### ${tag}\n\n${ops.map((o) => `- [\`${o.method.toUpperCase()} ${o.path}\`](./${tag}/${slug(o.id)}.md) — ${o.summary ?? ''}`).join('\n')}`)
+  .map(([tag, ops]) => `### ${tag}\n\n${ops.map((o) => `- [\`${o.method.toUpperCase()} ${o.path}\`](./${slug(tag)}/${slug(o.id)}.md) — ${o.summary ?? ''}`).join('\n')}`)
   .join('\n\n')}
 `;
 
   const opPages: GeneratedFile[] = [];
   for (const [tag, ops] of Object.entries(groups)) {
     for (const op of ops) {
-      opPages.push({ path: `${tag}/${slug(op.id)}.md`, contents: renderOpPage(op) });
+      opPages.push({ path: `${slug(tag)}/${slug(op.id)}.md`, contents: renderOpPage(op) });
     }
   }
 
@@ -60,7 +60,7 @@ ${Object.entries(groups)
         label: o.id,
         method: o.method.toUpperCase(),
         path: o.path,
-        href: `${tag}/${slug(o.id)}.md`,
+        href: `${slug(tag)}/${slug(o.id)}.md`,
       })),
     })),
   };

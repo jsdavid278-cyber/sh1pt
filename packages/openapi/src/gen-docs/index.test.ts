@@ -13,6 +13,9 @@ const SPEC = {
     '/pets': {
       get: { operationId: 'listPets', tags: ['pets'], summary: 'List pets', responses: { '200': { description: 'ok' } } },
     },
+    '/admin/tools': {
+      get: { operationId: 'listAdminTools', tags: ['Admin/Tools'], summary: 'List admin tools', responses: { '200': { description: 'ok' } } },
+    },
   },
 };
 
@@ -24,15 +27,19 @@ describe('generateDocsSite', () => {
     const paths = files.map((f) => f.path).sort();
     expect(paths).toContain('index.md');
     expect(paths).toContain('sidebar.json');
+    expect(paths).toContain('admin-tools/listadmintools.md');
     expect(paths).toContain('pets/listpets.md');
 
     const overview = await readFile(join(outDir, 'index.md'), 'utf8');
     expect(overview).toContain('# Petstore');
     expect(overview).toContain('https://api.petstore.io/v1');
     expect(overview).toContain('[`GET /pets`]');
+    expect(overview).toContain('./admin-tools/listadmintools.md');
 
     const sidebar = JSON.parse(await readFile(join(outDir, 'sidebar.json'), 'utf8'));
     expect(sidebar.groups[0].label).toBe('pets');
     expect(sidebar.groups[0].pages[0].method).toBe('GET');
+    expect(sidebar.groups[1].label).toBe('Admin/Tools');
+    expect(sidebar.groups[1].pages[0].href).toBe('admin-tools/listadmintools.md');
   });
 });
