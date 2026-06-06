@@ -1,4 +1,4 @@
-import { fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -56,5 +56,29 @@ describe('Safari extension build planning', () => {
     });
     expect(plan.archive.args).toContain('-archivePath');
     expect(plan.archive.args).toContain('generic/platform=macos');
+  });
+
+  it('rejects invalid Safari config before Xcode or App Store work', async () => {
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      bundleId: '',
+    })).rejects.toThrow('browser-safari requires bundleId');
+
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      bundleId: 'com acme.Extension',
+    })).rejects.toThrow('bundleId must look like a reverse-DNS identifier');
+
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      bundleId: 'com.acme.Extension',
+      projectDir: '',
+    })).rejects.toThrow('browser-safari requires projectDir');
+
+    await expect(adapter.build(fakeBuildContext({ dryRun: true }) as any, {
+      bundleId: 'com.acme.Extension',
+      scheme: '',
+    })).rejects.toThrow('browser-safari requires scheme');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      bundleId: 'Extension',
+    })).rejects.toThrow('bundleId must look like a reverse-DNS identifier');
   });
 });
