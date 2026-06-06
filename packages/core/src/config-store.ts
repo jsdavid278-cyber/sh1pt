@@ -18,13 +18,17 @@ export function configPath(): string {
   return path.join(configDir(), 'config.json');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
 export async function readConfig(): Promise<Sh1ptConfig> {
   try {
     const raw = await fs.readFile(configPath(), 'utf8');
     const parsed = JSON.parse(raw) as Partial<Sh1ptConfig>;
     return {
       version: typeof parsed.version === 'number' ? parsed.version : CONFIG_VERSION,
-      adapters: parsed.adapters && typeof parsed.adapters === 'object' ? parsed.adapters : {},
+      adapters: isRecord(parsed.adapters) ? parsed.adapters : {},
     };
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
