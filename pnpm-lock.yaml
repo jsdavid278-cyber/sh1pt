@@ -1320,6 +1320,12 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/promo/posthog:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/promo/reddit:
     dependencies:
       '@profullstack/sh1pt-core':
