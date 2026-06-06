@@ -43,10 +43,11 @@ export class WhatsAppBot {
   }
 
   async start(): Promise<void> {
-    const { state, saveState } = useMultiFileAuthState("./auth");
+    const { state } = useMultiFileAuthState("./auth");
 
-    this.sock = makeBaileysBot(state, {
-      print: console.log,
+    this.sock = makeBaileysBot({
+      auth: state,
+      printQRInTerminal: true,
       browser: ["sh1pt-bot", "Chrome", "120"],
     });
 
@@ -65,7 +66,7 @@ export class WhatsAppBot {
           source: chatId,
           sourceName: msg.pushName || "User",
           text,
-          timestamp: msg.messageTimestamp * 1000,
+          timestamp: Number(msg.messageTimestamp ?? 0) * 1000,
           chatId,
           isGroup,
           attachments: [],

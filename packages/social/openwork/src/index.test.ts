@@ -38,7 +38,7 @@ describe('social-openwork adapter', () => {
   });
 
   it('submits work to a job via POST /jobs/:id/submit', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({ submission: { id: 'sub-789' } }),
@@ -59,7 +59,7 @@ describe('social-openwork adapter', () => {
     expect(result.url).toBe('https://www.openwork.bot/jobs/abc-123');
     expect(result.platform).toBe('openwork');
 
-    const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://www.openwork.bot/api/jobs/abc-123/submit');
     expect(init.method).toBe('POST');
     const body = JSON.parse(String(init.body));

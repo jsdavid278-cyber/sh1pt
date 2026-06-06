@@ -2,7 +2,14 @@
   "name": "@profullstack/sh1pt-agent-provider-mistral",
   "version": "0.1.15",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "dependencies": {
     "@profullstack/sh1pt-agent-provider-shared": "workspace:*"
   },
