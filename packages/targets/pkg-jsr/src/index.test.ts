@@ -47,6 +47,25 @@ describe('pkg-jsr target adapter', () => {
     expect(execMock).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid JSR package config before publish work', async () => {
+    await expect(adapter.ship(shipContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      scope: 'BadScope',
+    })).rejects.toThrow('scope must be lowercase letters');
+
+    await expect(adapter.ship(shipContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      packageName: 'bad_name',
+    })).rejects.toThrow('packageName must be lowercase letters');
+
+    await expect(adapter.ship(shipContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      packageDir: '   ',
+    })).rejects.toThrow('pkg-jsr requires packageDir');
+
+    expect(execMock).not.toHaveBeenCalled();
+  });
+
   it('requires JSR_TOKEN before publishing', async () => {
     await expect(adapter.ship(shipContext({ dryRun: false }) as any, sampleConfig))
       .rejects.toThrow('JSR_TOKEN secret not set');
