@@ -19,10 +19,20 @@ interface Config {
 
 type RokuManifest = Record<string, string>;
 
+const CHANNEL_TYPES = ['public', 'beta', 'private'] as const;
+
 function requireValue(value: string | undefined, field: string): string {
   const trimmed = value?.trim();
   if (!trimmed) throw new Error(`tv-roku requires ${field}`);
   return trimmed;
+}
+
+function requireChannelType(value: string | undefined): Config['channelType'] {
+  const channelType = requireValue(value, 'channelType');
+  if (!CHANNEL_TYPES.includes(channelType as Config['channelType'])) {
+    throw new Error(`tv-roku channelType must be one of: ${CHANNEL_TYPES.join(', ')}`);
+  }
+  return channelType as Config['channelType'];
 }
 
 function parseManifest(text: string): RokuManifest {
@@ -50,6 +60,7 @@ async function listFiles(root: string, dir = root): Promise<string[]> {
 
 async function packagePlan(ctx: { projectDir: string; outDir: string; version: string }, config: Config) {
   const developerId = requireValue(config.developerId, 'developerId');
+  const channelType = requireChannelType(config.channelType);
   const sourceDir = resolve(ctx.projectDir, requireValue(config.sourceDir, 'sourceDir'));
   const info = await stat(sourceDir);
   if (!info.isDirectory()) throw new Error(`tv-roku sourceDir is not a directory: ${sourceDir}`);
@@ -70,12 +81,12 @@ async function packagePlan(ctx: { projectDir: string; outDir: string; version: s
     version: `${major}.${minor}.${build}`,
     channelId: config.channelId,
     developerId,
-    channelType: config.channelType,
+    channelType,
     sourceDir,
     expectedPackage,
     files,
     command: ['zip', '-r', expectedPackage, '.'],
-    submission: config.channelType === 'public' ? 'Roku Channel Store review' : `${config.channelType} channel`,
+    submission: channelType === 'public' ? 'Roku Channel Store review' : `${channelType} channel`,
   };
 }
 
@@ -92,14 +103,15 @@ export default defineTarget<Config>({
     return { artifact, meta: { expectedPackage: plan.expectedPackage, files: plan.files.length, command: plan.command } };
   },
   async ship(ctx, config) {
-    const dest = config.channelType === 'public' ? 'Roku Channel Store review' : `${config.channelType} channel`;
+    const channelType = requireChannelType(config.channelType);
+    const dest = channelType === 'public' ? 'Roku Channel Store review' : `${channelType} channel`;
     ctx.log(`Roku package ready for ${dest}`);
-    if (ctx.dryRun) return { id: 'dry-run', meta: { channelType: config.channelType, destination: dest } };
+    if (ctx.dryRun) return { id: 'dry-run', meta: { channelType, destination: dest } };
     return {
       id: `${config.channelId ?? 'pending'}@${ctx.version}`,
       meta: {
         artifact: ctx.artifact,
-        channelType: config.channelType,
+        channelType,
         destination: dest,
         developerId: config.developerId,
       },

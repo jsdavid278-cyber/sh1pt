@@ -14,7 +14,7 @@ afterEach(async () => {
 });
 
 describe('Roku TV target', () => {
-  it('validates the Roku manifest and writes a package plan', async () => {
+  async function writeValidRokuProject() {
     const projectDir = await mkdtemp(join(tmpdir(), 'sh1pt-roku-project-'));
     const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-roku-out-'));
     tempDirs.push(projectDir, outDir);
@@ -30,6 +30,11 @@ describe('Roku TV target', () => {
       'mm_icon_focus_hd=images/icon.png',
       '',
     ].join('\n'), 'utf-8');
+    return { projectDir, outDir };
+  }
+
+  it('validates the Roku manifest and writes a package plan', async () => {
+    const { projectDir, outDir } = await writeValidRokuProject();
 
     const result = await adapter.build(fakeBuildContext({
       projectDir,
@@ -69,6 +74,19 @@ describe('Roku TV target', () => {
     ]);
   });
 
+  it('rejects unsupported channel types while building the package plan', async () => {
+    const { projectDir, outDir } = await writeValidRokuProject();
+
+    await expect(adapter.build(fakeBuildContext({
+      projectDir,
+      outDir,
+    }) as any, {
+      developerId: 'dev-123',
+      sourceDir: 'roku',
+      channelType: 'preview',
+    } as any)).rejects.toThrow('tv-roku channelType must be one of: public, beta, private');
+  });
+
   it('keeps dry-run shipping side-effect free', async () => {
     await expect(adapter.ship(fakeShipContext({
       dryRun: true,
@@ -83,6 +101,16 @@ describe('Roku TV target', () => {
         destination: 'Roku Channel Store review',
       },
     });
+  });
+
+  it('rejects unsupported channel types while shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      dryRun: true,
+    }) as any, {
+      developerId: 'dev-123',
+      sourceDir: 'roku',
+      channelType: 'preview',
+    } as any)).rejects.toThrow('tv-roku channelType must be one of: public, beta, private');
   });
 
   it('returns package metadata in real ship mode', async () => {
