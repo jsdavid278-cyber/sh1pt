@@ -141,6 +141,14 @@ export function auditWorkflowContent(file: string, content: string): WorkflowAud
     }
   }
 
+  for (const match of content.matchAll(/^\s*container:\s*([^\s#]+)\s*(?:#.*)?$/gm)) {
+    const image = match[1];
+    if (!image) continue;
+    if (!image.includes('@sha256:')) {
+      add('unpinned-docker-image', 'medium', `image ${image} is not pinned to a digest`);
+    }
+  }
+
   return findings;
 }
 
