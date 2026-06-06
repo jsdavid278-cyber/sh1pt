@@ -1,4 +1,4 @@
-import { contractTestTarget, fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { contractTestTarget, fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -47,5 +47,29 @@ describe('Linux desktop target planning', () => {
       apt: { repo: 'acme/stable' },
       direct: { host: 'github-releases', project: 'acme/app' },
     });
+  });
+
+  it('rejects invalid app identifiers while building', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-linux-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '1.2.3',
+      channel: 'stable',
+    }) as any, {
+      ...sampleConfig,
+      appId: '../acme',
+    })).rejects.toThrow('desktop-linux appId must be a valid reverse-DNS identifier');
+  });
+
+  it('rejects invalid app identifiers while shipping', async () => {
+    await expect(adapter.ship(fakeShipContext({
+      version: '1.2.3',
+      dryRun: false,
+    }) as any, {
+      ...sampleConfig,
+      appId: 'com.acme/app',
+    })).rejects.toThrow('desktop-linux appId must be a valid reverse-DNS identifier');
   });
 });
