@@ -7,6 +7,30 @@ interface Config {
   detach?: boolean;
 }
 
+function requireText(value: string | undefined, field: string): string {
+  const text = value?.trim();
+  if (!text) throw new Error(`deploy-railway requires ${field}`);
+  return text;
+}
+
+function requireSegment(value: string | undefined, field: string): string {
+  const text = requireText(value, field);
+  if (/[\\/?#\x00-\x1F\x7F]/.test(text)) {
+    throw new Error(`deploy-railway ${field} must be a single URL path segment`);
+  }
+  return text;
+}
+
+function environmentName(config: Config, channel: string): string {
+  const env = config.environment === undefined
+    ? (channel === 'stable' ? 'production' : 'staging')
+    : requireText(config.environment, 'environment');
+  if (!/^[A-Za-z0-9._-]+$/.test(env)) {
+    throw new Error('deploy-railway environment must contain only letters, numbers, dots, underscores, or hyphens');
+  }
+  return env;
+}
+
 export default defineTarget<Config>({
   id: 'deploy-railway',
   kind: 'web',
@@ -16,6 +40,12 @@ export default defineTarget<Config>({
     return { artifact: ctx.projectDir };
   },
   async ship(ctx, config) {
+    config = {
+      ...config,
+      projectId: requireSegment(config.projectId, 'projectId'),
+      serviceId: requireSegment(config.serviceId, 'serviceId'),
+      environment: environmentName(config, ctx.channel),
+    };
     const env = config.environment ?? (ctx.channel === 'stable' ? 'production' : 'staging');
     ctx.log(`railway up · service=${config.serviceId} · env=${env}`);
     if (ctx.dryRun) return { id: 'dry-run' };
