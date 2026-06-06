@@ -33,7 +33,7 @@ export function resolveInput(raw: string): ResolvedInput {
 
   // 1) SSH git urls: git@host:path or ssh://git@host/path
   if (/^git@[^:]+:/.test(input) || /^ssh:\/\//.test(input)) {
-    return { kind: 'git', raw, value: input, inferredName: repoNameFromGit(input) };
+    return { kind: 'git', raw, value: normalizeGitUrl(input), inferredName: repoNameFromGit(input) };
   }
 
   // 2) Http(s) git urls: *.git, github.com/foo/bar, gitlab.com/foo/bar,
@@ -88,6 +88,8 @@ function isForgeRepoUrl(u: string): boolean {
  *   https://github.com/foo/bar?tab=readme#install → https://github.com/foo/bar
  *   https://github.com/foo/bar.git?ref=main        → https://github.com/foo/bar.git
  *   https://github.com/foo/bar.git#README          → https://github.com/foo/bar.git
+*   ssh://git@github.com/org/repo?query         → ssh://git@github.com/org/repo
+  *   git@github.com:org/repo?tab=readme          → git@github.com:org/repo
  */
 function normalizeGitUrl(u: string): string {
   // Strip query string and fragment — they are browser artefacts on clone URLs.
