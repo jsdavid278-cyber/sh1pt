@@ -15,11 +15,57 @@ interface Config {
   submitDeckVerification?: boolean;
 }
 
+function positiveInteger(value: number | undefined, field: string): number {
+  if (!Number.isInteger(value) || value === undefined || value <= 0) {
+    throw new Error(`console-steam ${field} must be a positive integer`);
+  }
+  return value;
+}
+
+function requireValue(value: string | undefined, field: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) throw new Error(`console-steam requires ${field}`);
+  return trimmed;
+}
+
+function branch(value: string | undefined): string {
+  const name = requireValue(value, 'branch');
+  if (/\s/.test(name)) throw new Error('console-steam branch must not contain whitespace');
+  return name;
+}
+
+function depotIds(values: Config['depotIds'] | undefined): Config['depotIds'] {
+  if (!values?.length) throw new Error('console-steam requires at least one depot');
+  const seen = new Set<string>();
+  return values.map((depot) => {
+    if (depot.platform !== 'windows' && depot.platform !== 'macos' && depot.platform !== 'linux') {
+      throw new Error('console-steam depot platform must be windows, macos, or linux');
+    }
+    if (seen.has(depot.platform)) throw new Error(`console-steam duplicate depot platform: ${depot.platform}`);
+    seen.add(depot.platform);
+    return {
+      platform: depot.platform,
+      depotId: positiveInteger(depot.depotId, 'depotId'),
+    };
+  });
+}
+
+function normalizedConfig(config: Config): Config {
+  return {
+    ...config,
+    steamAppId: positiveInteger(config.steamAppId, 'steamAppId'),
+    depotIds: depotIds(config.depotIds),
+    branch: branch(config.branch),
+    binariesDir: requireValue(config.binariesDir, 'binariesDir'),
+  };
+}
+
 export default defineTarget<Config>({
   id: 'console-steam',
   kind: 'console',
   label: 'Steam / Steam Deck (SteamOS)',
   async build(ctx, config) {
+    config = normalizedConfig(config);
     const platforms = config.depotIds.map((d) => d.platform).join(',');
     ctx.log(`prepare Steam depots · platforms=${platforms}`);
     const artifactDir = join(ctx.outDir, 'steam');
@@ -35,6 +81,7 @@ export default defineTarget<Config>({
     return { artifact: planPath };
   },
   async ship(ctx, config) {
+    config = normalizedConfig(config);
     ctx.log(`steamcmd run_app_build · app=${config.steamAppId} · branch=${config.branch}`);
     if (ctx.dryRun) return { id: 'dry-run' };
     // TODO:

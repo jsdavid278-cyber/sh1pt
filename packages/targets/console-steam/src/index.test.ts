@@ -1,4 +1,4 @@
-import { contractTestTarget, fakeBuildContext, smokeTest } from '@profullstack/sh1pt-core/testing';
+import { contractTestTarget, fakeBuildContext, fakeShipContext, smokeTest } from '@profullstack/sh1pt-core/testing';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,5 +40,35 @@ describe('Steam target planning', () => {
     expect(plan.branch).toBe('beta');
     expect(plan.binariesDir).toBe('/tmp/builds');
     expect(plan.submitDeckVerification).toBe(true);
+  });
+
+  it('rejects invalid Steam config before planning or shipping', async () => {
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...sampleConfig,
+      steamAppId: 0,
+    })).rejects.toThrow('steamAppId must be a positive integer');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...sampleConfig,
+      depotIds: [],
+    })).rejects.toThrow('requires at least one depot');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...sampleConfig,
+      depotIds: [
+        { platform: 'linux', depotId: 123457 },
+        { platform: 'linux', depotId: 123458 },
+      ],
+    })).rejects.toThrow('duplicate depot platform: linux');
+
+    await expect(adapter.build(fakeBuildContext() as any, {
+      ...sampleConfig,
+      branch: 'beta branch',
+    })).rejects.toThrow('branch must not contain whitespace');
+
+    await expect(adapter.ship(fakeShipContext({ dryRun: true }) as any, {
+      ...sampleConfig,
+      binariesDir: '',
+    })).rejects.toThrow('console-steam requires binariesDir');
   });
 });
