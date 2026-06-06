@@ -19,6 +19,7 @@ import { agentsCmd } from './commands/agents.js';
 import { deployCmd } from './commands/deploy.js';
 import { openapiCmd } from './commands/openapi.js';
 import { runsCmd } from './commands/runs.js';
+import { logicsrcCmd } from './commands/logicsrc.js';
 
 const program = new Command();
 
@@ -56,6 +57,7 @@ program.addCommand(skillsCmd);          // skills   · package/promote SKILL.md 
 program.addCommand(agentsCmd);      // agents   · generate/run/talk with AI coding CLIs
 program.addCommand(deployCmd);      // deploy   · provision cloud infrastructure
 program.addCommand(openapiCmd);     // openapi  · spec → SDK + MCP server + docs site (Stainless-style)
+program.addCommand(logicsrcCmd);    // logicsrc · LogicSRC OpenSpec-only workflows
 
 // Self-management — sh1pt update / upgrade / remove / uninstall.
 program.addCommand(updateCmd);

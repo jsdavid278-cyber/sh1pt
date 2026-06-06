@@ -37,6 +37,19 @@ sh1pt scale          # provision cloud infra, DNS round-robin, rollouts, cost ce
 sh1pt iterate        # observe metrics → agent proposes diffs → ship → measure, on loop
 ```
 
+## LogicSRC OpenSpec mode
+
+sh1pt exposes LogicSRC standards workflows under a dedicated sub-command:
+
+```bash
+sh1pt logicsrc
+sh1pt logicsrc plugins
+sh1pt logicsrc --openspec-only task validate ./task.yaml
+sh1pt logicsrc --openspec-only agentswarm --yolo --repo profullstack/logicsrc
+```
+
+Use `--openspec-only` when a workflow must stay inside LogicSRC-published schemas, CLI/TUI conventions, SDK contracts, MCP resources/tools/prompts, PWA states, and curl-compatible API surfaces.
+
 ## Filesystem-mirrored adapter commands
 
 Every `packages/<category>/<name>/` in the sh1pt monorepo is a CLI command:
