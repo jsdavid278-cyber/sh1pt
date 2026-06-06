@@ -14,7 +14,7 @@ afterEach(async () => {
 });
 
 describe('mobile-android target adapter', () => {
-  it('keeps package names with path separators inside the output directory', async () => {
+  it('writes the AAB artifact for a valid Android package name', async () => {
     const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-android-out-'));
     tempDirs.push(outDir);
 
@@ -23,9 +23,31 @@ describe('mobile-android target adapter', () => {
       version: '1.2.3',
       dryRun: true,
     }) as any, {
-      packageName: '../com.example.app',
+      packageName: 'com.example.app',
     });
 
     expect(result.artifact).toBe(join(outDir, 'com.example.app-1.2.3.aab'));
+  });
+
+  it('rejects package names with path separators', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'sh1pt-android-out-'));
+    tempDirs.push(outDir);
+
+    await expect(adapter.build(fakeBuildContext({
+      outDir,
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      packageName: '../com.example.app',
+    })).rejects.toThrow('packageName');
+  });
+
+  it('rejects package names without multiple Java identifier segments', async () => {
+    await expect(adapter.ship(fakeBuildContext({
+      version: '1.2.3',
+      dryRun: true,
+    }) as any, {
+      packageName: 'example',
+    })).rejects.toThrow('packageName');
   });
 });
