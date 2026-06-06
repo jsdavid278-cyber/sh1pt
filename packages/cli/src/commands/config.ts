@@ -158,9 +158,40 @@ stackCmd
 
 stackCmd
   .command('detect')
-  .description('Auto-detect stack from project files (package.json / pyproject.toml / Cargo.toml / …)')
-  .action(() => {
-    console.log(kleur.dim('[stub] stack detect — look for package.json, pyproject.toml, Cargo.toml, *.csproj, CMakeLists.txt'));
+  .description('Auto-detect stack from project files (package.json / bun.lock / pyproject.toml / Cargo.toml / …)')
+  .option('--cwd <path>', 'directory to scan', process.cwd())
+  .action(async (opts: { cwd: string }) => {
+    const { existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const cwd = opts.cwd;
+    console.log(kleur.dim(`Scanning: ${cwd}`));
+    const checks = [
+      { file: 'bun.lock', stack: 'bun', label: 'Bun' },
+      { file: 'package.json', stack: 'node', label: 'Node.js / TypeScript' },
+      { file: 'pyproject.toml', stack: 'python', label: 'Python' },
+      { file: 'Cargo.toml', stack: 'rust', label: 'Rust' },
+      { file: '*.csproj', stack: 'dotnet', label: '.NET' },
+      { file: 'CMakeLists.txt', stack: 'cpp', label: 'C++' },
+    ];
+    for (const check of checks) {
+      if (check.file.includes("*")) {
+        const { readdirSync } = await import("node:fs");
+        try {
+          const files = readdirSync(cwd);
+          if (files.some(f => f.endsWith(check.file.slice(1)))) {
+            console.log(`  ${kleur.green("●")} ${kleur.bold(check.label)}  ${kleur.dim("(" + check.file + ")")}`);
+            return;
+          }
+        } catch { console.error(kleur.dim(`[debug] could not scan ${check.file}`)); }
+      } else {
+        const fullPath = join(cwd, check.file);
+        if (existsSync(fullPath)) {
+          console.log(`  ${kleur.green("●")} ${kleur.bold(check.label)}  ${kleur.dim("(" + check.file + ")")}`);
+          return;
+        }
+      }
+    }
+    console.log(`  ${kleur.yellow("○")} No supported stack detected. Run 'sh1pt config stack set' to pick one.`);
   });
 
 // ------ vcs (git / github / gitlab / gitea) -----------------------------
@@ -198,8 +229,36 @@ vcsCmd
   .command('auth')
   .description('Walk through setting the right token in the vault (GITHUB_TOKEN / GITLAB_TOKEN / GITEA_TOKEN)')
   .option('--provider <id>', 'vcs-github | vcs-gitlab | vcs-gitea')
-  .action((opts: { provider?: string }) => {
-    console.log(kleur.cyan(`[stub] vcs auth · ${opts.provider ?? 'current'} — prompt for token and write to vault`));
+  .action(async (opts: { provider?: string }) => {
+    const { setSecretInLocal } = await import("../local-vault.js");
+    let provider = opts.provider;
+    if (!provider) {
+      const resp = await prompts({
+        type: 'select',
+        name: 'p',
+        message: 'VCS provider?',
+        choices: [
+          { title: 'GitHub', description: 'github.com — GITHUB_TOKEN', value: 'vcs-github' },
+          { title: 'GitLab', description: 'gitlab.com — GITLAB_TOKEN', value: 'vcs-gitlab' },
+          { title: 'Gitea', description: 'codeberg.org etc — GITEA_TOKEN', value: 'vcs-gitea' },
+        ],
+        initial: 0,
+      });
+      provider = resp.p;
+      if (!provider) return;
+    }
+    const envVar = provider === 'vcs-github' ? 'GITHUB_TOKEN' : provider === 'vcs-gitlab' ? 'GITLAB_TOKEN' : provider === 'vcs-gitea' ? 'GITEA_TOKEN' : null;
+    if (envVar === null) { console.error(kleur.red(`Unknown provider: "${provider}". Expected vcs-github | vcs-gitlab | vcs-gitea`)); process.exit(1); }
+    console.log(kleur.dim(`Provider: ${provider}, Token env: ${envVar}`));
+    const hasExisting = process.env[envVar];
+    if (hasExisting) {
+      const overwrite = await prompts({ type: 'confirm', name: 'v', message: `${envVar} is set in env. Save to vault also?`, initial: true });
+      if (!overwrite.v) { console.log(kleur.dim(`Using environment ${envVar}`)); return; }
+    }
+    const tokenResp = await prompts({ type: 'password', name: 'v', message: `Enter ${envVar} token:` });
+    if (!tokenResp.v) { console.log(kleur.yellow("No token entered")); return; }
+    try { await setSecretInLocal(envVar, tokenResp.v); } catch (err: unknown) { console.error(kleur.red(`Failed to write vault: ${err instanceof Error ? err.message : err}`)); process.exit(1); }
+    console.log(kleur.green(`✓ ${envVar} saved to local vault`));
   });
 
 vcsCmd
