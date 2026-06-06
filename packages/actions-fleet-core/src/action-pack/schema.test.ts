@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { actionPackManifestSchema } from './schema.js';
-import { parseManifest, validateManifest, isSafeDestination, ActionPackValidationError } from './validate.js';
+import {
+  parseManifest,
+  validateManifest,
+  isSafeDestination,
+  isSafeTemplateSource,
+  ActionPackValidationError,
+} from './validate.js';
 
 const validManifest = {
   schemaVersion: 1,
@@ -110,6 +116,21 @@ describe('validateManifest path safety', () => {
     expect(() => validateManifest(bad)).toThrow(ActionPackValidationError);
   });
 
+  it('rejects Windows-style template source traversal', () => {
+    const bad = {
+      ...validManifest,
+      files: [
+        {
+          source: 'templates\\..\\escape.hbs',
+          destination: '.github/workflows/ci.yml',
+          mergeStrategy: 'replace-managed' as const,
+        },
+      ],
+    };
+    expect(() => validateManifest(bad)).toThrow(ActionPackValidationError);
+    expect(isSafeTemplateSource('templates\\..\\escape.hbs')).toBe(false);
+  });
+
   it('allows workflow files, dependabot, codeowners', () => {
     expect(isSafeDestination('.github/workflows/ci.yml')).toBe(true);
     expect(isSafeDestination('.github/workflows/release.yaml')).toBe(true);
@@ -122,6 +143,7 @@ describe('validateManifest path safety', () => {
     expect(isSafeDestination('.github/workflows/../../etc/passwd')).toBe(false);
     expect(isSafeDestination('.github/workflows/')).toBe(false);
     expect(isSafeDestination('.github/workflows/ci.txt')).toBe(false);
+    expect(isSafeDestination('.github\\workflows\\ci.yml')).toBe(false);
     expect(isSafeDestination('')).toBe(false);
     expect(isSafeDestination('.github/workflows/ci.yml\0.bad')).toBe(false);
   });

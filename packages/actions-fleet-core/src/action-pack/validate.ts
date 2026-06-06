@@ -23,6 +23,7 @@ export class ActionPackValidationError extends Error {
 export function isSafeDestination(destination: string): boolean {
   if (destination.length === 0) return false;
   if (destination.startsWith('/')) return false;
+  if (destination.includes('\\')) return false;
   if (destination.includes('\0')) return false;
   const segments = destination.split('/');
   for (const segment of segments) {
@@ -34,6 +35,7 @@ export function isSafeDestination(destination: string): boolean {
 export function isSafeTemplateSource(source: string): boolean {
   if (source.length === 0) return false;
   if (source.startsWith('/')) return false;
+  if (source.includes('\\')) return false;
   if (source.includes('\0')) return false;
   const segments = source.split('/');
   for (const segment of segments) {
