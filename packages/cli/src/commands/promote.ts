@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import kleur from 'kleur';
 import prompts from 'prompts';
 import {
@@ -14,6 +14,11 @@ import { shipCmd as shipSub } from './ship.js';
 import { makeCliSetupContext } from '../setup-context.js';
 import { ensureInstalled, loadInstalledPackage } from '../installer.js';
 import { runShell } from './build.js';
+import {
+  normalizeFollowAction,
+  runBlueskySocialFollow,
+  type SocialFollowAction,
+} from '../social-follow.js';
 
 export const promoteCmd = new Command('promote')
   .description('Run ads + ship swag + list in affiliate marketplaces. Reddit, Meta, TikTok, Google, YouTube, X, Apple Search, LinkedIn, Microsoft — plus Printful/Printify merch and CJ/Rakuten/Impact/etc affiliate programs.')
@@ -691,6 +696,85 @@ socialCmd
     console.log(kleur.dim('[stub] social metrics'));
   });
 
+interface SocialFollowCommandOptions {
+  platform?: string;
+  action?: string;
+  unfollow?: boolean;
+  max: number;
+  delayMs: number;
+  account?: string;
+  pds?: string;
+  dryRun?: boolean;
+  yes?: boolean;
+}
+
+socialCmd
+  .command('follow <url>')
+  .description('Follow or unfollow accounts from a social account URL; supports Bluesky profile/follows/followers URLs')
+  .option('--platform <id>', 'platform override; currently bluesky')
+  .option('--action <kind>', 'follow | unfollow', 'follow')
+  .option('--unfollow', 'shortcut for --action unfollow')
+  .option('--max <n>', 'maximum accounts to process', parsePositiveInteger, 25)
+  .option('--delay-ms <ms>', 'delay between write actions', parseNonNegativeInteger, 2000)
+  .option('--account <handle>', 'Bluesky account handle to authenticate as; defaults to configured social-bluesky handle')
+  .option('--pds <url>', 'Bluesky PDS URL; defaults to configured PDS or https://bsky.social')
+  .option('--dry-run', 'preview candidates without changing follows')
+  .option('--yes', 'skip confirmation prompt')
+  .action(async (url: string, opts: SocialFollowCommandOptions) => {
+    const platform = (opts.platform ?? 'bluesky').replace(/^social-/, '').toLowerCase();
+    if (platform !== 'bluesky' && platform !== 'bsky') {
+      console.error(kleur.red(`social follow only supports Bluesky today; got ${opts.platform}`));
+      process.exit(1);
+    }
+
+    let action: SocialFollowAction;
+    try {
+      action = normalizeFollowAction(opts.action, opts.unfollow);
+    } catch (err) {
+      console.error(kleur.red(err instanceof Error ? err.message : String(err)));
+      process.exit(1);
+    }
+
+    if (!opts.dryRun && !opts.yes) {
+      const res = await prompts({
+        type: 'confirm',
+        name: 'ok',
+        message: `${action} up to ${opts.max} account${opts.max === 1 ? '' : 's'} from ${url}?`,
+        initial: false,
+      });
+      if (!res.ok) {
+        console.log(kleur.dim('aborted.'));
+        return;
+      }
+    }
+
+    const config = await getAdapterConfig<{ handle?: string; pds?: string }>('social-bluesky') ?? {};
+    const setupCtx = makeCliSetupContext();
+
+    try {
+      const result = await runBlueskySocialFollow(url, {
+        action,
+        account: opts.account ?? config.handle,
+        appPassword: setupCtx.secret('BLUESKY_APP_PASSWORD'),
+        pds: opts.pds ?? config.pds,
+        max: opts.max,
+        delayMs: opts.delayMs,
+        dryRun: opts.dryRun,
+        log: (message) => console.log(kleur.dim(`  ${message}`)),
+      });
+
+      const verb = result.action === 'follow' ? 'followed' : 'unfollowed';
+      if (result.dryRun) {
+        console.log(kleur.cyan(`dry-run complete · scanned=${result.scanned} · change=0`));
+      } else {
+        console.log(kleur.green(`${verb} ${result.changed} account${result.changed === 1 ? '' : 's'} · skipped ${result.skipped}`));
+      }
+    } catch (err) {
+      console.error(kleur.red(err instanceof Error ? err.message : String(err)));
+      process.exit(1);
+    }
+  });
+
 // AI providers — generate ad copy / social bodies / taglines from a
 // prompt. Distinct from `agents/` (which wraps installed CLI binaries
 // like `claude` / `codex`); this is HTTP-API-based content generation
@@ -764,6 +848,18 @@ aiCmd
 
 function stripAiPrefix(p: string): string {
   return p.replace(/^ai-/, '').toLowerCase();
+}
+
+function parsePositiveInteger(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) throw new InvalidArgumentError('must be a positive integer');
+  return parsed;
+}
+
+function parseNonNegativeInteger(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) throw new InvalidArgumentError('must be zero or a positive integer');
+  return parsed;
 }
 
 // Affiliate-network marketplaces — sister of `social` and `ai` but for
