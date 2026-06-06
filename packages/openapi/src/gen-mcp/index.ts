@@ -137,7 +137,10 @@ function toolDescriptor(op: Operation): string {
 }
 
 function toolHandler(op: Operation): string {
-  const pathExpr = op.path.replace(/\{([^}]+)\}/g, (_, n) => `\${a[${JSON.stringify(n)}]}`);
+  const pathExpr = op.path.replace(
+    /\{([^}]+)\}/g,
+    (_, n) => `\${encodeURIComponent(String(a[${JSON.stringify(n)}]))}`,
+  );
   const queryParams = op.parameters.filter((p) => p.in === 'query');
   const callParts: string[] = [];
   if (queryParams.length) callParts.push(`query: { ${queryParams.map((p) => `${JSON.stringify(p.name)}: a[${JSON.stringify(p.name)}]`).join(', ')} }`);
