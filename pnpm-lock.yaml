@@ -1391,6 +1391,60 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/seedboxes/bytesized:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/dediseedbox:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/gigarapid:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/pulsedmedia:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/rapidseedbox:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/seedboxescc:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/seedhosteu:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/ultracc:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/seedboxes/whatbox:
+    dependencies:
+      '@profullstack/sh1pt-core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/social/4claw:
     dependencies:
       '@profullstack/sh1pt-core':
@@ -1977,60 +2031,6 @@ importers:
         version: link:../../core
 
   packages/targets/sdk-pypi:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-bytesized:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-dediseedbox:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-gigarapid:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-pulsedmedia:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-rapidseedbox:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-seedboxescc:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-seedhosteu:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-ultracc:
-    dependencies:
-      '@profullstack/sh1pt-core':
-        specifier: workspace:*
-        version: link:../../core
-
-  packages/targets/seedbox-whatbox:
     dependencies:
       '@profullstack/sh1pt-core':
         specifier: workspace:*

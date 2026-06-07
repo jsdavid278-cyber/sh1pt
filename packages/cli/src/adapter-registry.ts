@@ -159,6 +159,12 @@ export const CATEGORIES: readonly AdapterCategory[] = [
     adapters: ['4claw', 'blossom', 'bluesky', 'codenewbie', 'devto', 'discord', 'facebook', 'forem', 'hackernews', 'hackernoon', 'hashnode', 'indiehackers', 'instagram', 'klawdin', 'linkedin', 'mastodon', 'medium', 'moltbook', 'moltexchange', 'moltfounders', 'moltywork', 'nostr', 'openwork', 'pinterest', 'primal', 'quora', 'reddit', 'secureclaw', 'snapchat', 'spotify', 'stackernews', 'telegram', 'the-colony', 'threads', 'tikclawk', 'tiktok', 'toku-agency', 'tumblr', 'twitch', 'ugig', 'vimeo', 'x', 'youtube'],
   },
   {
+    id: 'seedboxes',
+    pkgPrefix: '@profullstack/sh1pt-seedbox',
+    description: 'Seedbox providers — remote torrent + media server hosting',
+    adapters: ['bytesized', 'dediseedbox', 'gigarapid', 'pulsedmedia', 'rapidseedbox', 'seedboxescc', 'seedhosteu', 'ultracc', 'whatbox'],
+  },
+  {
     id: 'targets',
     pkgPrefix: '@profullstack/sh1pt-target',
     description: 'Distribution targets — stores, registries, CDNs, deploy platforms',

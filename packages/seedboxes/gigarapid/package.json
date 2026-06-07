@@ -1,5 +1,5 @@
 {
-  "name": "@profullstack/sh1pt-target-seedbox-whatbox",
+  "name": "@profullstack/sh1pt-seedbox-gigarapid",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -15,7 +15,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/profullstack/sh1pt.git",
-    "directory": "packages/targets/seedbox-whatbox"
+    "directory": "packages/seedboxes/gigarapid"
   },
   "homepage": "https://sh1pt.com",
   "bugs": "https://github.com/profullstack/sh1pt/issues",
