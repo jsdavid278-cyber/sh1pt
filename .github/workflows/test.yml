@@ -23,7 +23,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build workspace library packages
-        run: pnpm --filter @profullstack/sh1pt-core --filter @profullstack/sh1pt-actions-fleet-core --filter @profullstack/sh1pt-policy --filter @profullstack/sh1pt-agent-provider-shared build
+        run: pnpm --filter @profullstack/sh1pt-core --filter @profullstack/sh1pt-actions-fleet-core --filter @profullstack/sh1pt-policy --filter @profullstack/sh1pt-agent-provider-shared --filter @profullstack/sh1pt-action-packs build
 
       - run: pnpm test
         env:
