@@ -8,7 +8,7 @@ FROM node:20-bookworm-slim AS build
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+RUN npm install -g pnpm@9.12.0
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ FROM node:20-bookworm-slim AS runner
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+RUN npm install -g pnpm@9.12.0
 
 WORKDIR /app
 
