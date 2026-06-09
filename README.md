@@ -48,6 +48,10 @@ mise run typecheck
 
 See [`CLI_INTEGRATIONS.md`](./CLI_INTEGRATIONS.md) for the CLI-backed integration backlog and install hints.
 
+### Partners
+
+- [vu1nz.com](https://vu1nz.com) — security scanning partner for web and repo assessment workflows.
+
 ### Ships to
 
 **Web / hosting**

@@ -81,7 +81,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <footer className="container" style={{ padding: '3rem 1.5rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
           <div>© 2026 Profullstack, Inc. — sh1pt is MIT-licensed.</div>
           <div style={{ marginTop: '0.5rem' }}>
-            <a href="/blog">Blog</a> · <a href="/investors">Investors</a> · <a href="/deck">Deck</a> · <a href="/waitlist">Waitlist</a> · <a href="https://github.com/profullstack/sh1pt">Source</a>
+            <a href="/blog">Blog</a> · <a href="/investors">Investors</a> · <a href="/deck">Deck</a> · <a href="/waitlist">Waitlist</a> · <a href="https://github.com/profullstack/sh1pt">Source</a> · <a href="https://vu1nz.com" target="_blank" rel="noopener noreferrer">vu1nz.com partner</a>
           </div>
         </footer>
         <CrawlproofStats />
