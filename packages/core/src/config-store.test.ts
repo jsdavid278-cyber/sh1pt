@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { configPath, deleteAdapterConfig, readConfig, setAdapterConfig } from './config-store.js';
+import { configPath, deleteAdapterConfig, readConfig, setAdapterConfig, writeConfig } from './config-store.js';
 
 const ORIGINAL_XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME;
 let tempDir: string | undefined;
@@ -38,6 +38,10 @@ describe('readConfig', () => {
     process.env.XDG_CONFIG_HOME = tempDir;
 
     await Promise.all([
+      writeConfig({
+        version: 1,
+        adapters: { base: { enabled: true } },
+      }),
       setAdapterConfig('target-a', { region: 'us-east' }),
       setAdapterConfig('target-b', { region: 'eu-west' }),
       setAdapterConfig('target-c', { region: 'ap-south' }),
@@ -51,6 +55,7 @@ describe('readConfig', () => {
     await expect(readConfig()).resolves.toEqual({
       version: 1,
       adapters: {
+        base: { enabled: true },
         'target-a': { region: 'us-east' },
         'target-c': { region: 'ap-south' },
         'target-d': { region: 'us-west' },
