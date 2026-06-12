@@ -22,6 +22,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+let configMutationLock: Promise<void> = Promise.resolve();
+
+function withConfigMutationLock<T>(mutation: () => Promise<T>): Promise<T> {
+  const next = configMutationLock.then(mutation);
+  configMutationLock = next.then(
+    () => {},
+    () => {},
+  );
+  return next;
+}
+
 export async function readConfig(): Promise<Sh1ptConfig> {
   try {
     const raw = await fs.readFile(configPath(), 'utf8');
@@ -37,11 +48,15 @@ export async function readConfig(): Promise<Sh1ptConfig> {
   }
 }
 
-export async function writeConfig(cfg: Sh1ptConfig): Promise<void> {
+async function writeConfigFile(cfg: Sh1ptConfig): Promise<void> {
   await fs.mkdir(configDir(), { recursive: true, mode: 0o700 });
-  const tmp = `${configPath()}.tmp`;
+  const tmp = `${configPath()}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
   await fs.rename(tmp, configPath());
+}
+
+export function writeConfig(cfg: Sh1ptConfig): Promise<void> {
+  return withConfigMutationLock(() => writeConfigFile(cfg));
 }
 
 export async function getAdapterConfig<T = unknown>(adapterId: string): Promise<T | undefined> {
@@ -51,14 +66,18 @@ export async function getAdapterConfig<T = unknown>(adapterId: string): Promise<
 }
 
 export async function setAdapterConfig(adapterId: string, adapterConfig: unknown): Promise<void> {
-  const cfg = await readConfig();
-  cfg.adapters[adapterId] = adapterConfig;
-  await writeConfig(cfg);
+  return withConfigMutationLock(async () => {
+    const cfg = await readConfig();
+    cfg.adapters[adapterId] = adapterConfig;
+    await writeConfigFile(cfg);
+  });
 }
 
 export async function deleteAdapterConfig(adapterId: string): Promise<void> {
-  const cfg = await readConfig();
-  if (!(adapterId in cfg.adapters)) return;
-  delete cfg.adapters[adapterId];
-  await writeConfig(cfg);
+  return withConfigMutationLock(async () => {
+    const cfg = await readConfig();
+    if (!(adapterId in cfg.adapters)) return;
+    delete cfg.adapters[adapterId];
+    await writeConfigFile(cfg);
+  });
 }
