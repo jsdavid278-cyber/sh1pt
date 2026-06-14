@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { configDir } from '@profullstack/sh1pt-core';
 import { describeInput, resolveInput } from '../input.js';
+import { parsePositiveSafeInteger, parseQuietHours } from './iterate-options.js';
 
 // agentsCmd moved to root level — see https://github.com/profullstack/sh1pt/issues/235
 
@@ -293,8 +294,8 @@ iterateCmd
   .option('--agent <id>', 'claude | codex | qwen', 'claude')
   .option('--scope <area>', 'copy | pricing | onboarding | perf | bugs | all', 'all')
   .option('--cloud', 'schedule in sh1pt cloud instead of local cron')
-  .option('--interval <seconds>', 're-check interval in seconds', Number, 3600)
-  .option('--quiet-hours <start-end>', 'pause during these local hours, e.g. 22-08')
+  .option('--interval <seconds>', 're-check interval in seconds', parsePositiveSafeInteger, 3600)
+  .option('--quiet-hours <start-end>', 'pause during these local hours, e.g. 22-08', parseQuietHours)
   .option('--stop', 'remove the watch configuration')
   .option('--status', 'show current watch configuration')
   .action(async (opts: {
