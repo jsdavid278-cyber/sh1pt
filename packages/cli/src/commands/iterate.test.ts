@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { parseQuietHours } from './iterate-options.js';
+import { parsePositiveSafeInteger, parseQuietHours } from './iterate-options.js';
+
+describe('parsePositiveSafeInteger', () => {
+  it('accepts positive safe integer intervals', () => {
+    expect(parsePositiveSafeInteger('60')).toBe(60);
+  });
+
+  it.each(['nope', '0', '-1', '1.5', 'Infinity', '9007199254740992'])(
+    'rejects invalid interval %s',
+    (value) => {
+      expect(() => parsePositiveSafeInteger(value)).toThrow('positive safe integer');
+    },
+  );
+});
 
 describe('parseQuietHours', () => {
   it.each(['22-08', '0-23', '09-17'])('accepts valid local hour range %s', (value) => {
